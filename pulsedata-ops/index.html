@@ -1,0 +1,2456 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuantFlux | Quantitative Big Data & Financial Risk Terminal</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-theme="dark">
+
+    <div class="layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i data-lucide="activity" class="text-cyan"></i>
+                    <span>QuantFlux</span>
+                </div>
+                <div style="font-size:0.65rem; color:var(--text-muted); margin-top:4px; margin-left:2px; letter-spacing:0.05em;">Algorithmic Risk Engine & Big Data Stream (v3.2)</div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <span class="nav-section-title">TERMINAL & ANALYTICS</span>
+                
+                <a href="#" class="nav-item active" data-view="view-overview">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span data-i18n="nav_overview">Genel Bakış (Terminal)</span>
+                </a>
+                <a href="#" class="nav-item" data-view="view-fundamental">
+                    <i data-lucide="file-spreadsheet"></i>
+                    <span data-i18n="nav_fundamental">Bilanço & Temel Analiz</span>
+                </a>
+                <a href="#" class="nav-item" data-view="view-eventstudy">
+                    <i data-lucide="zap"></i>
+                    <span data-i18n="nav_eventstudy">Event Study (Bilanço Sürprizi)</span>
+                </a>
+                <a href="#" class="nav-item" data-view="view-multifactor">
+                    <i data-lucide="git-merge"></i>
+                    <span data-i18n="nav_multifactor">Çok Faktörlü Regresyon</span>
+                </a>
+                <a href="#" class="nav-item" data-view="view-timeseries">
+                    <i data-lucide="line-chart"></i>
+                    <span data-i18n="nav_timeseries">Zaman Serisi & Tahmin</span>
+                </a>
+                <a href="#" class="nav-item" data-view="view-risk">
+                    <i data-lucide="shield-alert"></i>
+                    <span data-i18n="nav_risk">Risk & Portföy (VaR)</span>
+                </a>
+                
+                <span class="nav-section-title" style="margin-top: 16px;">DATA ENGINEERING & RISK ENGINE</span>
+                
+                <a href="#" class="nav-item" data-view="view-pipeline">
+                    <i data-lucide="database"></i>
+                    <span data-i18n="nav_pipeline">Büyük Veri Akışı</span>
+                    <span class="badge" style="background:var(--color-cyan); display:inline-flex; align-items:center; gap:4px;"><span class="pulse-dot" style="width:6px; height:6px;"></span>LIVE</span>
+                </a>
+                <a href="#" class="nav-item" data-view="view-stress">
+                    <i data-lucide="cpu"></i>
+                    <span data-i18n="nav_stress">Stres Testi (What-If)</span>
+                </a>
+                <a href="#" class="nav-item" data-view="view-settings">
+                    <i data-lucide="sliders"></i>
+                    <span data-i18n="nav_settings">Model Ayarları</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="preferences" style="display: flex; gap: 8px; margin-bottom: 12px; padding: 0 12px;">
+                    <select id="themeSelector" class="dark-select" style="flex: 1; font-size: 0.75rem; padding: 6px; border-radius: 4px;">
+                        <option value="dark" selected>Dark Mode</option>
+                        <option value="light">Light Mode</option>
+                        <option value="sepia">Sepia Mode</option>
+                    </select>
+                    <select id="langSelector" class="dark-select" style="flex: 1; font-size: 0.75rem; padding: 6px; border-radius: 4px;">
+                        <option value="tr" selected>🇹🇷 TR</option>
+                        <option value="en">🇬🇧 EN</option>
+                    </select>
+                </div>
+                <div class="user-profile">
+                    <img src="https://ui-avatars.com/api/?name=Bera+Yolcu&background=09090b&color=06b6d4" alt="Bera Yolcu">
+                    <div class="user-info">
+                        <span class="user-name">Bera Yolcu</span>
+                        <span class="user-role">Quantitative Analyst / DS</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="top-header">
+                <div class="search-bar">
+                    <i data-lucide="search"></i>
+                    <input type="text" placeholder="Sembol veya dönem ara (örn: THYAO, 2023/12)...">
+                </div>
+                <div class="header-actions">
+                    
+                    <div class="company-select-badge" title="Aktif BIST Şirketini Seç">
+                        <i data-lucide="building-2" class="text-cyan" style="width:16px;"></i>
+                        <select id="companySelector">
+                            <option value="THYAO" selected>THYAO - Türk Hava Yolları</option>
+                            <option value="KCHOL">KCHOL - Koç Holding</option>
+                            <option value="AGHOL">AGHOL - AG Anadolu Grubu</option>
+                            <option value="BERA">BERA - Bera Holding</option>
+                            <option value="CUSTOM" id="customCompanyOption" disabled>📂 Özel Yüklenen Bilanço</option>
+                        </select>
+                    </div>
+
+                    <span id="uploadStatusBadge" class="badge" style="background:var(--bg-panel-hover); border:1px solid var(--border-light); color:var(--text-secondary); display:flex; align-items:center; height:36px; padding:0 12px; font-weight:500;">
+                        Durum: THYAO Aktif (4 Dönem)
+                    </span>
+
+                    <a href="#" id="downloadSampleBtn" style="font-size:0.8rem; color:var(--color-cyan); text-decoration:none; margin-right:8px;" data-i18n="download_sample">Örnek Bilanço Şablonu (.csv)</a>
+
+                    <label class="btn btn-secondary upload-btn" style="cursor: pointer;" title="Bilanço Veri Seti Yükle (.xls, .csv)">
+                        <i data-lucide="upload-cloud"></i> 
+                        <span style="display: none; @media(min-width:768px){display:inline;}" data-i18n="upload_btn">📂 Bilanço Yükle (.xls, .csv)</span>
+                        <input type="file" accept=".csv, .json, .xls, .xlsx" id="dataset-upload" style="display: none;">
+                    </label>
+
+                    <button class="icon-btn">
+                        <i data-lucide="bell"></i>
+                        <span class="notification-dot"></span>
+                    </button>
+                    <button class="btn btn-primary" id="aiReportBtn">
+                        <i data-lucide="sparkles"></i> <span data-i18n="ai_report_btn">⚡ QuantFlux Sinyal Raporu</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- View: Overview -->
+            <div id="view-overview" class="dashboard-container view-container active">
+                <div class="page-title">
+                    <h1 data-i18n="title_overview">Portföy & Risk Terminali</h1>
+                    <p data-i18n="desc_overview">Gerçek zamanlı piyasa verisi, risk simülasyonu ve volatilite tahminleri.</p>
+                </div>
+
+                <!-- KPIs -->
+                <div class="kpi-grid">
+                    <div class="kpi-card glass">
+                        <div class="kpi-header">
+                            <div class="kpi-icon bg-cyan-dim"><i data-lucide="briefcase" class="text-cyan"></i></div>
+                            <span class="trend positive" id="kpiNetIncomeTrend"><i data-lucide="trending-up"></i> +%45.2</span>
+                        </div>
+                        <div class="kpi-body">
+                            <span class="kpi-label" data-i18n="kpi_netincome">Net Kar / Zarar (Net Income)</span>
+                            <h3 class="kpi-value" id="kpiPortfoyValue">₺ --</h3>
+                        </div>
+                    </div>
+                    
+                    <div class="kpi-card glass">
+                        <div class="kpi-header">
+                            <div class="kpi-icon bg-emerald-dim"><i data-lucide="shield-alert" class="text-emerald"></i></div>
+                            <span class="trend positive" id="kpiEquityTrend"><i data-lucide="trending-up"></i> +%32.1</span>
+                        </div>
+                        <div class="kpi-body">
+                            <span class="kpi-label" data-i18n="kpi_equity">Özkaynaklar (Equity)</span>
+                            <h3 class="kpi-value text-emerald" id="varKpiVal">--</h3>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card glass">
+                        <div class="kpi-header">
+                            <div class="kpi-icon bg-indigo-dim"><i data-lucide="activity" class="text-indigo"></i></div>
+                            <span class="trend positive" id="kpiEbitdaTrend"><i data-lucide="trending-up"></i> +%58.4</span>
+                        </div>
+                        <div class="kpi-body">
+                            <span class="kpi-label" data-i18n="kpi_ebitda">FAVÖK (EBITDA)</span>
+                            <h3 class="kpi-value" id="sharpeKpiVal">--</h3>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card glass">
+                        <div class="kpi-header">
+                            <div class="kpi-icon bg-rose-dim"><i data-lucide="database" class="text-rose"></i></div>
+                            <span class="trend positive" id="kpiAssetsTrend"><i data-lucide="trending-up"></i> +%42.7</span>
+                        </div>
+                        <div class="kpi-body">
+                            <span class="kpi-label" data-i18n="kpi_assets">Aktif Toplamı (Total Assets)</span>
+                            <h3 class="kpi-value" id="kpiRowCount">--</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stress Test What-If Strip -->
+                <div class="simulation-strip glass">
+                    <div class="sim-header">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <i data-lucide="cpu" class="text-cyan"></i>
+                            <h3 style="font-size: 1rem; font-weight: 600;" data-i18n="sim_header">Kârlılık & Şok Simülasyonu (What-If)</h3>
+                        </div>
+                        <button class="btn btn-secondary" id="resetSimBtn" style="padding: 4px 10px; font-size: 0.8rem;">
+                            <i data-lucide="rotate-ccw" style="width: 14px;"></i> <span data-i18n="sim_reset">Sıfırla</span>
+                        </button>
+                    </div>
+                    <div class="sim-controls">
+                        <div class="slider-group">
+                            <label>
+                                <span data-i18n="sim_lbl_cost">Satış Maliyeti Artışı (%)</span>
+                                <span class="sim-val" id="volVal">+%0</span>
+                            </label>
+                            <input type="range" class="sim-slider" id="volSlider" min="0" max="50" value="0" step="5" disabled>
+                        </div>
+                        <div class="slider-group">
+                            <label>
+                                <span data-i18n="sim_lbl_fx">Kur Şoku (USD/TRY Değişimi %)</span>
+                                <span class="sim-val" id="rateVal">0%</span>
+                            </label>
+                            <input type="range" class="sim-slider" id="rateSlider" min="-20" max="100" value="0" step="5" disabled>
+                        </div>
+                    </div>
+                    <div class="sim-footer">
+                        <span data-i18n="sim_impact">Simüle Edilen Net Kar Etkisi:</span> <strong class="text-rose" id="stressImpact">₺0</strong> | <span data-i18n="sim_new_net">Yeni Net Kar:</span> <strong id="stressVar">--</strong>
+                    </div>
+                </div>
+
+                <!-- Charts Grid -->
+                <div class="charts-grid">
+                    <div class="chart-card glass span-2">
+                        <div class="chart-header">
+                            <div>
+                                <h2 data-i18n="chart_trends">Bilanço Trendleri & Gelecek Yıl Projeksiyonu</h2>
+                                <p data-i18n="chart_trends_desc">Net Satışlar ve Net Kar tahmin eğrisi.</p>
+                            </div>
+                        </div>
+                        <div class="chart-body" id="timeSeriesContainer">
+                            <div class="empty-state-banner" style="cursor: pointer; transition: 0.3s;" onmouseover="this.style.borderColor='var(--color-cyan)';" onmouseout="this.style.borderColor='var(--border-light)';" onclick="document.getElementById('dataset-upload').click();">
+                                <i data-lucide="bar-chart-2"></i>
+                                <p data-i18n="empty_chart_1">📊 Lütfen analizi başlatmak için bir Bilanço (XLS/CSV) veri seti yükleyin.</p>
+                            </div>
+                            <canvas id="timeSeriesChart" style="display:none;"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="chart-card glass">
+                        <div class="chart-header">
+                            <div>
+                                <h2 data-i18n="chart_dist">Varlık & Kaynak Dağılımı</h2>
+                                <p data-i18n="chart_dist_desc">Aktif ve Pasif dağılımının karşılaştırmalı analizi.</p>
+                            </div>
+                        </div>
+                        <div class="chart-body" style="height: 280px;" id="varDistContainer">
+                            <div class="empty-state-banner" style="cursor: pointer; transition: 0.3s;" onmouseover="this.style.borderColor='var(--color-cyan)';" onmouseout="this.style.borderColor='var(--border-light)';" onclick="document.getElementById('dataset-upload').click();">
+                                <i data-lucide="pie-chart"></i>
+                                <p data-i18n="empty_chart_1">📊 Lütfen analizi başlatmak için bir Bilanço (XLS/CSV) veri seti yükleyin.</p>
+                            </div>
+                            <canvas id="varDistChart" style="display:none;"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="table-card glass" style="padding: 24px; overflow: hidden; display: flex; flex-direction: column;">
+                        <div class="card-header" style="margin-bottom: 20px;">
+                            <h2 id="basicAnalysisHeader" data-i18n="basic_analysis_header">Temel Analiz & Çarpanlar (THYAO)</h2>
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:14px;">
+                            <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border-light); padding-bottom:8px;">
+                                <span style="color:var(--text-secondary)" data-i18n="ba_fk">F/K (Fiyat/Kazanç - TTM)</span>
+                                <strong class="text-cyan" id="fkKpi">--</strong>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border-light); padding-bottom:8px;">
+                                <span style="color:var(--text-secondary)" data-i18n="ba_pddd">PD/DD (Piyasa/Defter Değeri)</span>
+                                <strong id="pdddKpi">--</strong>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border-light); padding-bottom:8px;">
+                                <span style="color:var(--text-secondary)" data-i18n="ba_fdfavok">FD/FAVÖK (Firma Değeri/FAVÖK)</span>
+                                <strong id="fdfavokKpi">--</strong>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border-light); padding-bottom:8px;">
+                                <span style="color:var(--text-secondary)" data-i18n="ba_cari">Cari Oran</span>
+                                <strong class="text-emerald" id="cariOranKpi">--</strong>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border-light); padding-bottom:8px;">
+                                <span style="color:var(--text-secondary)">Net Borç / FAVÖK</span>
+                                <strong class="text-indigo" id="netBorcFavokKpi">--</strong>
+                            </div>
+                            <div style="display:flex; justify-content:space-between;">
+                                <span style="color:var(--text-secondary)">ROE (Özkaynak Kârlılığı)</span>
+                                <strong class="text-emerald" id="roeKpi">--</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Piotroski F-Score & Altman Z-Score Kurumsal Risk Kartı -->
+                    <div class="scorecard-widget glass span-2" id="quantScorecardWidget">
+                        <div class="scorecard-header">
+                            <div class="scorecard-title-group">
+                                <div class="kpi-icon bg-cyan-dim" style="width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                    <i data-lucide="shield-check" class="text-cyan" style="width: 20px; height: 20px;"></i>
+                                </div>
+                                <div>
+                                    <h2 id="scorecardCompanyHeader">Bilanço Kalitesi & İflas Riski Radarı</h2>
+                                    <p>Piotroski F-Score (9 Kriter) & Altman Z''-Score (Emerging Markets Modeli)</p>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span class="badge-live-cyan"><span class="pulse-dot"></span> BIST Risk Modeli</span>
+                                <span class="badge-live-green" id="scorecardSyncBadge"><i data-lucide="check" style="width: 12px; height: 12px;"></i> Canlı Skor</span>
+                            </div>
+                        </div>
+
+                        <!-- 2 Büyük Skor Paneli: Piotroski ve Altman Z -->
+                        <div class="scorecard-scores-row">
+                            <!-- Piotroski F-Score Panel -->
+                            <div class="score-panel">
+                                <div class="score-panel-head">
+                                    <div>
+                                        <div class="score-panel-name">Piotroski F-Score</div>
+                                        <div class="score-panel-value">
+                                            <span class="text-cyan" id="piotroskiScoreVal">6</span>
+                                            <span class="score-panel-max">/ 9</span>
+                                        </div>
+                                    </div>
+                                    <span class="score-badge-pill score-badge-cyan" id="piotroskiVerdictBadge">
+                                        <i data-lucide="award" style="width: 13px; height: 13px;"></i>
+                                        <span id="piotroskiVerdictText">Dengeli Bilanço</span>
+                                    </span>
+                                </div>
+                                <div class="piotroski-progress-container">
+                                    <div class="piotroski-bar-bg">
+                                        <div class="piotroski-bar-fill" id="piotroskiBarFill" style="width: 66%;"></div>
+                                    </div>
+                                    <div class="piotroski-sub-stats">
+                                        <span id="piotroskiProfSub">Kârlılık: <strong>4/4</strong></span>
+                                        <span id="piotroskiLevSub">Kaldıraç: <strong>1/3</strong></span>
+                                        <span id="piotroskiEffSub">Verimlilik: <strong>1/2</strong></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Altman Z''-Score Panel -->
+                            <div class="score-panel">
+                                <div class="score-panel-head">
+                                    <div>
+                                        <div class="score-panel-name">Altman Z''-Score (EM Modeli)</div>
+                                        <div class="score-panel-value">
+                                            <span class="text-emerald" id="altmanScoreVal">3.39</span>
+                                            <span class="score-panel-max">pts</span>
+                                        </div>
+                                    </div>
+                                    <span class="score-badge-pill score-badge-emerald" id="altmanZoneBadge">
+                                        <i data-lucide="shield" style="width: 13px; height: 13px;"></i>
+                                        <span id="altmanZoneText">GÜVENLİ BÖLGE</span>
+                                    </span>
+                                </div>
+                                <div class="altman-gauge-container">
+                                    <div class="altman-meter-track">
+                                        <div class="altman-meter-zone altman-zone-distress" title="Riskli / İflas Bölgesi (< 1.10)"></div>
+                                        <div class="altman-meter-zone altman-zone-grey" title="Gri Bölge (1.10 - 2.60)"></div>
+                                        <div class="altman-meter-zone altman-zone-safe" title="Güvenli Bölge (> 2.60)"></div>
+                                    </div>
+                                    <div class="altman-meter-pointer-wrapper">
+                                        <div class="altman-meter-pointer" id="altmanMeterPointer" style="left: 67.8%;"></div>
+                                    </div>
+                                    <div class="altman-zones-legend">
+                                        <span class="text-rose">Riskli (&lt; 1.10)</span>
+                                        <span class="text-amber">Gri (1.10 - 2.60)</span>
+                                        <span class="text-emerald">Güvenli (&gt; 2.60)</span>
+                                    </div>
+                                    <p class="altman-desc-text" id="altmanDescText">İflas ve temerrüt riski son derece düşüktür. Güçlü bilanço tamponu.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 9 Kriter Checklist Dökümü -->
+                        <div class="criteria-checklist-container">
+                            <div class="criteria-section-title">
+                                <span><i data-lucide="check-square" style="width: 13px; height: 13px; vertical-align: -2px; margin-right: 4px;"></i> 9 Kriterli Bilanço Sağlık Dökümü (Check-List)</span>
+                                <span style="font-size: 0.7rem; color: var(--text-muted); font-weight: normal;">Çeyreklik Dönemsel Değişim Analizi</span>
+                            </div>
+                            <div class="criteria-grid">
+                                <!-- Kategori 1: Kârlılık (4 Kriter) -->
+                                <div class="criteria-category-box">
+                                    <div class="criteria-category-header">
+                                        <span>1. Kârlılık Kriterleri</span>
+                                        <span class="criteria-category-badge score-badge-cyan" id="catProfitabilityBadge">4 / 4</span>
+                                    </div>
+                                    <div id="criteriaListProfitability" style="display: flex; flex-direction: column; gap: 6px;">
+                                        <!-- Rendered dynamically -->
+                                    </div>
+                                </div>
+
+                                <!-- Kategori 2: Kaldıraç & Likidite (3 Kriter) -->
+                                <div class="criteria-category-box">
+                                    <div class="criteria-category-header">
+                                        <span>2. Kaldıraç & Likidite</span>
+                                        <span class="criteria-category-badge score-badge-amber" id="catLeverageBadge">1 / 3</span>
+                                    </div>
+                                    <div id="criteriaListLeverage" style="display: flex; flex-direction: column; gap: 6px;">
+                                        <!-- Rendered dynamically -->
+                                    </div>
+                                </div>
+
+                                <!-- Kategori 3: Operasyonel Verimlilik (2 Kriter) -->
+                                <div class="criteria-category-box">
+                                    <div class="criteria-category-header">
+                                        <span>3. Operasyonel Verimlilik</span>
+                                        <span class="criteria-category-badge score-badge-rose" id="catEfficiencyBadge">1 / 2</span>
+                                    </div>
+                                    <div id="criteriaListEfficiency" style="display: flex; flex-direction: column; gap: 6px;">
+                                        <!-- Rendered dynamically -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Assets & Anomaly Stream Table -->
+                <div class="table-card glass">
+                    <div class="card-header">
+                        <h2 data-i18n="table_assets_header">Yıllıklandırılmış Bilanço Kalemleri (TL Milyar)</h2>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th data-i18n="th_period">Dönem</th>
+                                    <th data-i18n="th_ca">Dönen Varlıklar</th>
+                                    <th data-i18n="th_fa">Duran Varlıklar</th>
+                                    <th data-i18n="th_ta">Toplam Varlıklar</th>
+                                    <th data-i18n="th_stl">Kısa Vadeli Yük.</th>
+                                    <th data-i18n="th_eq">Özkaynaklar</th>
+                                    <th data-i18n="th_ni">Net Kar</th>
+                                </tr>
+                            </thead>
+                            <tbody id="assetsTableBody">
+                                <!-- Rendered by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- View: Time Series -->
+            <div id="view-timeseries" class="dashboard-container view-container" style="display: none;">
+                <div class="page-title" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px;">
+                    <div>
+                        <h1 data-i18n="ts_title">Zaman Serisi & Tahmin</h1>
+                        <p data-i18n="ts_desc">Makine öğrenimi ve istatistiksel modeller ile zaman serisi tahmini.</p>
+                    </div>
+                    <div class="control-bar" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                        <div class="button-group" style="display: flex; background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 6px; overflow: hidden;">
+                            <button class="btn active" style="border: none; border-radius: 0; background: var(--color-cyan); color: #000; padding: 8px 12px; font-weight: 500;">LSTM Neural Net</button>
+                            <button class="btn" style="border: none; border-radius: 0; background: transparent; padding: 8px 12px; font-weight: 500;">ARIMA (p,d,q)</button>
+                            <button class="btn" style="border: none; border-radius: 0; background: transparent; padding: 8px 12px; font-weight: 500;">Prophet Trend</button>
+                        </div>
+                        <select class="dark-select" style="padding: 8px 16px; border-radius: 6px; border: 1px solid var(--border-light); background: var(--bg-card); color: var(--text-primary);">
+                            <option value="7">7 Gün</option>
+                            <option value="30" selected>30 Gün</option>
+                            <option value="90">90 Gün</option>
+                        </select>
+                        <button class="btn btn-primary" style="display: flex; align-items: center; gap: 8px;">
+                            <i data-lucide="play" style="width: 16px;"></i> <span data-i18n="ts_run">Optimizasyonu Çalıştır</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="kpi-grid">
+                    <div class="kpi-card glass">
+                        <div class="kpi-header"><span class="kpi-label" data-i18n="kpi_rmse">RMSE</span></div>
+                        <div class="kpi-body"><h3 class="kpi-value text-cyan" id="rmseKpi">--</h3></div>
+                    </div>
+                    <div class="kpi-card glass">
+                        <div class="kpi-header"><span class="kpi-label" data-i18n="kpi_aic">AIC</span></div>
+                        <div class="kpi-body"><h3 class="kpi-value" id="aicKpi">--</h3></div>
+                    </div>
+                    <div class="kpi-card glass">
+                        <div class="kpi-header"><span class="kpi-label" data-i18n="kpi_r2">R² (Açıklanan Varyans)</span></div>
+                        <div class="kpi-body"><h3 class="kpi-value" id="r2Kpi">--</h3></div>
+                    </div>
+                    <div class="kpi-card glass">
+                        <div class="kpi-header"><span class="kpi-label" data-i18n="kpi_df">Dickey-Fuller Durağanlık</span></div>
+                        <div class="kpi-body"><h3 class="kpi-value text-emerald" style="font-size: 1.2rem;" id="dfKpi">--</h3></div>
+                    </div>
+                </div>
+
+                <div class="chart-card glass" style="margin-top: 24px;">
+                    <div class="chart-header">
+                        <h2 data-i18n="ts_chart">Fiyat Yolu Tahmini & Güven Aralıkları (LSTM)</h2>
+                    </div>
+                    <div class="chart-body" style="height: 350px;">
+                        <canvas id="chart-timeseries-deep"></canvas>
+                    </div>
+                </div>
+
+                <!-- Event Study (Bilanço Anormal Getiri Analizi) Panel -->
+                <div class="chart-card glass" id="card-timeseries-eventstudy" style="margin-top: 24px;">
+                    <div class="chart-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(0, 242, 254, 0.1); border: 1px solid rgba(0, 242, 254, 0.25); display: flex; align-items: center; justify-content: center;">
+                                <i data-lucide="zap" style="color: var(--color-cyan); width: 18px; height: 18px;"></i>
+                            </div>
+                            <div>
+                                <h2 style="margin: 0; font-size: 1.15rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                                    Bilanço Olay Çalışması (Event Study)
+                                    <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: var(--color-emerald); border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.72rem; padding: 2px 8px; border-radius: 4px;">CAPM [-5, +5] Gün</span>
+                                </h2>
+                                <p style="margin: 2px 0 0 0; font-size: 0.8rem; color: var(--text-secondary);">
+                                    Bilanço açıklanma gününde (t₀) piyasanın verdiği anormal tepki (AR) ve kümülatif anormal getiri (CAR). Tahmin Penceresi: [-120, -21] gün OLS piyasa modeli.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Son 4 Bilanço Tepkisi Seçici -->
+                        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <label for="eventQuarterSelect" style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 500;">
+                                    <i data-lucide="calendar" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;"></i>Son 4 Bilanço Tepkisi:
+                                </label>
+                                <select id="eventQuarterSelect" class="dark-select" style="padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border-light); background: var(--bg-card); color: var(--text-primary); font-size: 0.85rem; font-weight: 500; cursor: pointer;">
+                                    <option value="2026/06">2026/06 (İlan: 2026-08-12 | +%32.2 Sürpriz)</option>
+                                    <option value="2025/12">2025/12 (İlan: 2026-03-04 | +%15.8 Sürpriz)</option>
+                                    <option value="2024/12">2024/12 (İlan: 2025-03-06 | -%3.9 Sürpriz)</option>
+                                    <option value="2023/12">2023/12 (İlan: 2024-03-08 | +%20.7 Sürpriz)</option>
+                                </select>
+                            </div>
+                            <button id="btnRefreshEventStudy" class="btn btn-secondary" title="Yeniden Hesapla" style="padding: 6px 10px; border-radius: 6px;">
+                                <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Mini KPI Row for Event Study -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 18px; margin-bottom: 18px;">
+                        <div class="kpi-card glass" style="padding: 12px 16px; border: 1px solid rgba(255,255,255,0.06);">
+                            <div class="kpi-header" style="font-size: 0.75rem; color: var(--text-secondary); display: flex; justify-content: space-between;">
+                                <span>BİLANÇO SÜRPRİZİ</span>
+                                <span id="tsEsSurpriseBadge" style="font-size: 0.72rem; color: var(--color-emerald); font-weight: 600;">+%32.2</span>
+                            </div>
+                            <div class="kpi-body" style="margin-top: 4px;">
+                                <h4 class="kpi-value text-emerald" id="tsEsSurpriseVal" style="font-size: 1.25rem; margin: 0;">+₺4.57 Mrd</h4>
+                                <span style="font-size: 0.72rem; color: var(--text-muted);" id="tsEsSueVal">SUE Skoru: +2.18 σ</span>
+                            </div>
+                        </div>
+
+                        <div class="kpi-card glass" style="padding: 12px 16px; border: 1px solid rgba(255,255,255,0.06);">
+                            <div class="kpi-header" style="font-size: 0.75rem; color: var(--text-secondary); display: flex; justify-content: space-between;">
+                                <span>t₀ ANORMAL GETİRİ (AR)</span>
+                                <span style="font-size: 0.72rem; color: var(--color-cyan);">Bilanço Günü</span>
+                            </div>
+                            <div class="kpi-body" style="margin-top: 4px;">
+                                <h4 class="kpi-value text-emerald" id="tsEsDay0Val" style="font-size: 1.25rem; margin: 0;">+%4.53</h4>
+                                <span style="font-size: 0.72rem; color: var(--text-muted);" id="tsEsDay0Sub">E[R]: +%0.67 | R: +%5.20</span>
+                            </div>
+                        </div>
+
+                        <div class="kpi-card glass" style="padding: 12px 16px; border: 1px solid rgba(255,255,255,0.06);">
+                            <div class="kpi-header" style="font-size: 0.75rem; color: var(--text-secondary); display: flex; justify-content: space-between;">
+                                <span>KÜMÜLATİF GETİRİ (CAR)</span>
+                                <span style="font-size: 0.72rem; color: var(--color-cyan);">[-5, +5] Penceresi</span>
+                            </div>
+                            <div class="kpi-body" style="margin-top: 4px;">
+                                <h4 class="kpi-value text-cyan" id="tsEsCarVal" style="font-size: 1.25rem; margin: 0;">+%8.78</h4>
+                                <span style="font-size: 0.72rem; color: var(--text-muted);" id="tsEsCarCiVal">%95 GA: [%5.02, %12.54]</span>
+                            </div>
+                        </div>
+
+                        <div class="kpi-card glass" style="padding: 12px 16px; border: 1px solid rgba(255,255,255,0.06);">
+                            <div class="kpi-header" style="font-size: 0.75rem; color: var(--text-secondary); display: flex; justify-content: space-between;">
+                                <span>CAPM MODELİ</span>
+                                <span style="font-size: 0.72rem; color: var(--text-muted);">OLS [-120, -21]</span>
+                            </div>
+                            <div class="kpi-body" style="margin-top: 4px;">
+                                <h4 class="kpi-value" id="tsEsModelBeta" style="font-size: 1.25rem; margin: 0;">β: 1.18</h4>
+                                <span style="font-size: 0.72rem; color: var(--text-muted);" id="tsEsModelR2">R²: 0.74 | σ_ε: %1.25</span>
+                            </div>
+                        </div>
+
+                        <div class="kpi-card glass" style="padding: 12px 16px; border: 1px solid rgba(255,255,255,0.06);">
+                            <div class="kpi-header" style="font-size: 0.75rem; color: var(--text-secondary); display: flex; justify-content: space-between;">
+                                <span>İSTATİSTİK & SİNYAL</span>
+                                <span id="tsEsPvalBadge" style="font-size: 0.72rem; color: var(--color-emerald); font-weight: 600;">p &lt; 0.05</span>
+                            </div>
+                            <div class="kpi-body" style="margin-top: 4px;">
+                                <h4 class="kpi-value" id="tsEsSignalVal" style="font-size: 1.05rem; margin: 0; color: var(--color-emerald); font-weight: 700;">GÜÇLÜ AL</h4>
+                                <span style="font-size: 0.72rem; color: var(--text-muted);" id="tsEsTstatVal">t-stat: 2.12 (p=0.0341)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Plotly Event Study Chart Container -->
+                    <div class="chart-body" style="height: 380px; position: relative;">
+                        <div id="chart-eventstudy-car-ts" style="height: 100%; width: 100%;"></div>
+                    </div>
+
+                    <!-- Econometric Legend / Formula Footer -->
+                    <div style="margin-top: 14px; padding: 12px 16px; background: rgba(15, 23, 42, 0.45); border: 1px solid var(--border-light); border-radius: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; font-size: 0.78rem; color: var(--text-secondary);">
+                        <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+                            <span style="display: flex; align-items: center; gap: 6px;">
+                                <span style="width: 12px; height: 3px; background: #00F2FE; display: inline-block; border-radius: 2px;"></span>
+                                <strong style="color: var(--text-primary);">CAR:</strong> Kümülatif Anormal Getiri
+                            </span>
+                            <span style="display: flex; align-items: center; gap: 6px;">
+                                <span style="width: 12px; height: 3px; background: #10B981; border-top: 1px dotted #10B981; display: inline-block;"></span>
+                                <strong style="color: var(--text-primary);">AR:</strong> Günlük Anormal Getiri (t₀ = Bilanço)
+                            </span>
+                            <span style="display: flex; align-items: center; gap: 6px;">
+                                <span style="width: 12px; height: 8px; background: rgba(0, 242, 254, 0.15); border: 1px solid rgba(0, 242, 254, 0.3); display: inline-block; border-radius: 2px;"></span>
+                                <strong style="color: var(--text-primary);">%95 GA:</strong> CAR ± 1.96 · SE(CAR)
+                            </span>
+                            <span style="display: flex; align-items: center; gap: 6px;">
+                                <span style="width: 12px; height: 0; border-top: 2px dashed #F43F5E; display: inline-block;"></span>
+                                <strong style="color: #F43F5E;">t₀ İlan Günü</strong>
+                            </span>
+                        </div>
+                        <div style="color: var(--text-muted); font-family: 'JetBrains Mono', monospace;">
+                            E[R_i] = α + β·R_m | AR_t = R_{i,t} - E[R_{i,t}] | CAR = Σ AR_t
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-card glass" id="card-feature-importance" style="margin-top: 24px;">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); display: flex; align-items: center; justify-content: center;">
+                                <i data-lucide="sliders" style="color: var(--color-emerald); width: 18px; height: 18px;"></i>
+                            </div>
+                            <div>
+                                <h2 style="margin: 0; font-size: 1.15rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                                    Özellik Önem Derecesi & Çok Faktörlü Regresyon
+                                    <span class="badge" style="background: rgba(0, 242, 254, 0.15); color: var(--color-cyan); border: 1px solid rgba(0, 242, 254, 0.3); font-size: 0.72rem; padding: 2px 8px; border-radius: 4px;">Statsmodels OLS</span>
+                                </h2>
+                                <p style="margin: 2px 0 0 0; font-size: 0.8rem; color: var(--text-secondary);">
+                                    Bağımlı Değişken: <strong>R_{t+1} (Gelecek Dönem Getiri)</strong> | VIF Çoklu Bağlantı Kontrolü (Eşik: VIF &le; 5.0).
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Model Metrics Badges -->
+                        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                            <div style="display: flex; gap: 8px; align-items: center; background: rgba(15, 23, 42, 0.6); padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-light); font-size: 0.78rem; font-family: 'JetBrains Mono', monospace;">
+                                <span>R²: <strong class="text-cyan" id="fiR2Val">0.468</strong></span>
+                                <span style="color: var(--border-light);">|</span>
+                                <span>Adj R²: <strong id="fiAdjR2Val">0.445</strong></span>
+                                <span style="color: var(--border-light);">|</span>
+                                <span>F-Stat: <strong class="text-emerald" id="fiFstatVal">20.08</strong></span>
+                                <span style="color: var(--border-light);">|</span>
+                                <span>DW: <strong id="fiDwVal">1.94</strong></span>
+                            </div>
+                            <span class="badge" id="fiVifBadge" style="background: rgba(16, 185, 129, 0.15); color: var(--color-emerald); border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.75rem; padding: 4px 10px; border-radius: 6px; font-weight: 600;">
+                                <i data-lucide="shield-check" style="width: 12px; height: 12px; vertical-align: middle; margin-right: 4px;"></i>VIF: Tüm Faktörler Güvenli (&lt; 5)
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th data-i18n="fi_th1" style="width: 28%;">Özellik / Faktör</th>
+                                    <th style="width: 12%;">Kategori</th>
+                                    <th data-i18n="fi_th2" style="width: 12%;">Etki Yönü</th>
+                                    <th data-i18n="fi_th3" style="width: 14%;">Katsayı (β / Weight)</th>
+                                    <th style="width: 14%;">t-İstatistiği (p-Val)</th>
+                                    <th style="width: 10%;">VIF Skoru</th>
+                                    <th data-i18n="fi_th4" style="width: 20%;">Göreceli Önem Barı</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-feature-importance-body">
+                                <tr>
+                                    <td>
+                                        <div style="font-weight: 600; color: var(--text-primary);">ROE Artışı (ΔROE)</div>
+                                        <div style="font-size: 0.72rem; color: var(--text-muted);">Özkaynak kârlılığındaki ivme</div>
+                                    </td>
+                                    <td><span class="badge" style="background: rgba(0, 242, 254, 0.1); color: var(--color-cyan); font-size: 0.7rem;">Temel Bilanço</span></td>
+                                    <td><span class="text-emerald" style="font-weight: 600;">+ Pozitif</span></td>
+                                    <td style="font-family: monospace; font-weight: 600;">0.428 <span style="font-size: 0.7rem; color: var(--text-muted);">(SE: 0.076)</span></td>
+                                    <td style="font-family: monospace;"><span class="text-emerald">t: 5.63</span> <span style="font-size: 0.7rem; color: var(--text-muted);">(p &lt; 0.001)</span></td>
+                                    <td style="font-family: monospace;"><span class="badge" style="background: rgba(16, 185, 129, 0.1); color: var(--color-emerald); font-size: 0.7rem;">1.48 ✓</span></td>
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <div style="flex: 1; background: var(--bg-page); border-radius: 4px; height: 8px; overflow: hidden;">
+                                                <div style="width: 77%; background: var(--color-cyan); height: 100%; border-radius: 4px;"></div>
+                                            </div>
+                                            <span style="font-size: 0.75rem; font-family: monospace; color: var(--text-secondary); width: 38px;">%30.7</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div style="font-weight: 600; color: var(--text-primary);">Sürpriz Kâr (SUE)</div>
+                                        <div style="font-size: 0.72rem; color: var(--text-muted);">Beklenmeyen kâr standart sapması</div>
+                                    </td>
+                                    <td><span class="badge" style="background: rgba(16, 185, 129, 0.1); color: var(--color-emerald); font-size: 0.7rem;">Bilanço Sürprizi</span></td>
+                                    <td><span class="text-emerald" style="font-weight: 600;">+ Pozitif</span></td>
+                                    <td style="font-family: monospace; font-weight: 600;">0.312 <span style="font-size: 0.7rem; color: var(--text-muted);">(SE: 0.068)</span></td>
+                                    <td style="font-family: monospace;"><span class="text-emerald">t: 4.59</span> <span style="font-size: 0.7rem; color: var(--text-muted);">(p &lt; 0.001)</span></td>
+                                    <td style="font-family: monospace;"><span class="badge" style="background: rgba(16, 185, 129, 0.1); color: var(--color-emerald); font-size: 0.7rem;">1.62 ✓</span></td>
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <div style="flex: 1; background: var(--bg-page); border-radius: 4px; height: 8px; overflow: hidden;">
+                                                <div style="width: 56%; background: var(--color-cyan); height: 100%; border-radius: 4px;"></div>
+                                            </div>
+                                            <span style="font-size: 0.75rem; font-family: monospace; color: var(--text-secondary); width: 38px;">%22.4</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div style="font-weight: 600; color: var(--text-primary);">Net Borç / FAVÖK Değişimi</div>
+                                        <div style="font-size: 0.72rem; color: var(--text-muted);">Kaldıraç azalışı getiri primi</div>
+                                    </td>
+                                    <td><span class="badge" style="background: rgba(245, 158, 11, 0.1); color: var(--color-amber); font-size: 0.7rem;">Kaldıraç & Borç</span></td>
+                                    <td><span class="text-rose" style="font-weight: 600;">- Negatif</span></td>
+                                    <td style="font-family: monospace; font-weight: 600;">-0.286 <span style="font-size: 0.7rem; color: var(--text-muted);">(SE: 0.071)</span></td>
+                                    <td style="font-family: monospace;"><span class="text-rose">t: -4.03</span> <span style="font-size: 0.7rem; color: var(--text-muted);">(p &lt; 0.001)</span></td>
+                                    <td style="font-family: monospace;"><span class="badge" style="background: rgba(16, 185, 129, 0.1); color: var(--color-emerald); font-size: 0.7rem;">1.84 ✓</span></td>
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <div style="flex: 1; background: var(--bg-page); border-radius: 4px; height: 8px; overflow: hidden;">
+                                                <div style="width: 51%; background: var(--color-rose); height: 100%; border-radius: 4px;"></div>
+                                            </div>
+                                            <span style="font-size: 0.75rem; font-family: monospace; color: var(--text-secondary); width: 38px;">%20.5</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div style="font-weight: 600; color: var(--text-primary);">Volatility Spillover (GARCH)</div>
+                                        <div style="font-size: 0.72rem; color: var(--text-muted);">Koşullu volatilite şok yayılımı</div>
+                                    </td>
+                                    <td><span class="badge" style="background: rgba(244, 63, 94, 0.1); color: var(--color-rose); font-size: 0.7rem;">Risk & Volatilite</span></td>
+                                    <td><span class="text-rose" style="font-weight: 600;">- Negatif</span></td>
+                                    <td style="font-family: monospace; font-weight: 600;">-0.214 <span style="font-size: 0.7rem; color: var(--text-muted);">(SE: 0.065)</span></td>
+                                    <td style="font-family: monospace;"><span class="text-rose">t: -3.29</span> <span style="font-size: 0.7rem; color: var(--text-muted);">(p=0.001)</span></td>
+                                    <td style="font-family: monospace;"><span class="badge" style="background: rgba(16, 185, 129, 0.1); color: var(--color-emerald); font-size: 0.7rem;">2.05 ✓</span></td>
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <div style="flex: 1; background: var(--bg-page); border-radius: 4px; height: 8px; overflow: hidden;">
+                                                <div style="width: 38%; background: var(--color-rose); height: 100%; border-radius: 4px;"></div>
+                                            </div>
+                                            <span style="font-size: 0.75rem; font-family: monospace; color: var(--text-secondary); width: 38px;">%15.3</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div style="font-weight: 600; color: var(--text-primary);">Hacim Momentumu (Vol_Mom)</div>
+                                        <div style="font-size: 0.72rem; color: var(--text-muted);">20g hacim / 60g MA oranı</div>
+                                    </td>
+                                    <td><span class="badge" style="background: rgba(0, 242, 254, 0.1); color: var(--color-cyan); font-size: 0.7rem;">Piyasa & Likidite</span></td>
+                                    <td><span class="text-emerald" style="font-weight: 600;">+ Pozitif</span></td>
+                                    <td style="font-family: monospace; font-weight: 600;">0.156 <span style="font-size: 0.7rem; color: var(--text-muted);">(SE: 0.054)</span></td>
+                                    <td style="font-family: monospace;"><span class="text-emerald">t: 2.89</span> <span style="font-size: 0.7rem; color: var(--text-muted);">(p=0.005)</span></td>
+                                    <td style="font-family: monospace;"><span class="badge" style="background: rgba(16, 185, 129, 0.1); color: var(--color-emerald); font-size: 0.7rem;">1.35 ✓</span></td>
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <div style="flex: 1; background: var(--bg-page); border-radius: 4px; height: 8px; overflow: hidden;">
+                                                <div style="width: 28%; background: var(--color-cyan); height: 100%; border-radius: 4px;"></div>
+                                            </div>
+                                            <span style="font-size: 0.75rem; font-family: monospace; color: var(--text-secondary); width: 38px;">%11.1</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Footer Metodoloji Notu -->
+                    <div style="padding: 12px 16px; background: rgba(15, 23, 42, 0.45); border-top: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 0.75rem; color: var(--text-secondary);">
+                        <div>
+                            <i data-lucide="info" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px; color: var(--color-cyan);"></i>
+                            <strong>Model Spesifikasyonu:</strong> R_{t+1} = α + β₁·ΔROE + β₂·SUE + β₃·Δ(NetBorç/FAVÖK) + β₄·Vol_Mom + β₅·GARCH + ε
+                        </div>
+                        <div style="font-family: 'JetBrains Mono', monospace; color: var(--text-muted);">
+                            VIF Kriteri: VIF &le; 5.0 (Çoklu bağlantı arındırılmış)
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- View: Risk -->
+            <div id="view-risk" class="dashboard-container view-container" style="display: none;">
+                <div class="page-title">
+                    <h1 data-i18n="risk_title">Risk & Portföy (VaR)</h1>
+                    <p data-i18n="risk_desc">Parametrik ve tarihsel simülasyon metodlarıyla risk analizi.</p>
+                </div>
+
+                <div class="kpi-grid">
+                    <div class="kpi-card glass">
+                        <div class="kpi-header"><span class="kpi-label" data-i18n="kpi_pvar">Parametrik VaR (%99, 1-Gün)</span></div>
+                        <div class="kpi-body"><h3 class="kpi-value text-rose" id="paramVarKpi">--</h3></div>
+                    </div>
+                    <div class="kpi-card glass">
+                        <div class="kpi-header"><span class="kpi-label" data-i18n="kpi_hvar">Tarihsel Simülasyon VaR (%95)</span></div>
+                        <div class="kpi-body"><h3 class="kpi-value text-rose" id="histVarKpi">--</h3></div>
+                    </div>
+                    <div class="kpi-card glass">
+                        <div class="kpi-header"><span class="kpi-label" data-i18n="kpi_cvar">Expected Shortfall (CVaR)</span></div>
+                        <div class="kpi-body"><h3 class="kpi-value text-rose" id="cvarKpi">--</h3></div>
+                    </div>
+                    <div class="kpi-card glass">
+                        <div class="kpi-header"><span class="kpi-label" data-i18n="kpi_maxdd">Maksimum Drawdown</span></div>
+                        <div class="kpi-body"><h3 class="kpi-value text-rose" id="maxDdKpi">--</h3></div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px;">
+                    <div class="chart-card glass">
+                        <div class="chart-header">
+                            <h2 data-i18n="risk_chart1">Getiri Dağılımı & VaR Cut-off</h2>
+                            <p data-i18n="risk_chart1_desc">Normal vs. Fat-tail Student's t</p>
+                        </div>
+                        <div class="chart-body" style="height: 300px;">
+                            <canvas id="chart-risk-dist"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card glass">
+                        <div class="chart-header">
+                            <h2 data-i18n="risk_chart2">Varlık Risk Katkısı</h2>
+                            <p data-i18n="risk_chart2_desc">Marginal Risk Contributions</p>
+                        </div>
+                        <div class="chart-body" style="height: 300px; display: flex; justify-content: center; align-items: center;">
+                            <div style="width: 100%; max-width: 250px; height: 100%;">
+                                <canvas id="chart-asset-risk"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-card glass" style="margin-top: 24px; padding: 24px;">
+                    <div class="card-header" style="margin-bottom: 20px;">
+                        <h2 data-i18n="corr_header">Korelasyon Matrisi (Correlation Heatmap)</h2>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; text-align: center; color: var(--text-primary); font-family: monospace; font-size: 0.9rem;">
+                            <thead>
+                                <tr>
+                                    <th style="padding: 12px; border: 1px solid var(--border-light); background: rgba(255,255,255,0.02);"></th>
+                                    <th style="padding: 12px; border: 1px solid var(--border-light); background: rgba(255,255,255,0.02);">BIST30</th>
+                                    <th style="padding: 12px; border: 1px solid var(--border-light); background: rgba(255,255,255,0.02);">Brent Petrol</th>
+                                    <th style="padding: 12px; border: 1px solid var(--border-light); background: rgba(255,255,255,0.02);">Altın</th>
+                                    <th style="padding: 12px; border: 1px solid var(--border-light); background: rgba(255,255,255,0.02);">BTC</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <th style="padding: 12px; border: 1px solid var(--border-light); background: rgba(255,255,255,0.02); text-align: left;">BIST30</th>
+                                    <td style="padding: 12px; border: 1px solid var(--border-light); background: rgba(6, 182, 212, 0.4);">1.00</td>
+                                    <td style="padding: 12px; border: 1px solid var(--border-light); background: rgba(6, 182, 212, 0.1);">0.24</td>
+                                    <td style="padding: 12px; border: 1px solid var(--border-light); background: rgba(244, 63, 94, 0.15);">-0.15</td>
+                                    <td style="padding: 12px; border: 1px solid var(--border-light); background: rgba(6, 182, 212, 0.2);">0.32</td>
+                                </tr>
+                                <tr>
+                                    <th style="padding: 12px; border: 1px solid var(--border-light); background: rgba(255,255,255,0.02); text-align: left;">Brent Petrol</th>
+                                    <td style="padding: 12px; border: 1px solid var(--border-light); background: rgba(6, 182, 212, 0.1);">0.24</td>
+                                    <td style="padding: 12px; border: 1px solid var(--border-light); background: rgba(6, 182, 212, 0.4);">1.00</td>
+                                    <td style="padding: 12px; border: 1px solid var(--border-light); background: rgba(6, 182, 212, 0.25);">0.45</td>
+                                    <td style="padding: 12px; border: 1px solid var(--border-light); background: rgba(244, 63, 94, 0.08);">-0.08</td>
+                                </tr>
+                                <tr>
+                                    <th style="padding: 12px; border: 1px solid var(--border-light); background: rgba(255,255,255,0.02); text-align: left;">Altın</th>
+                                    <td style="padding: 12px; border: 1px solid var(--border-light); background: rgba(244, 63, 94, 0.15);">-0.15</td>
+                                    <td style="padding: 12px; border: 1px solid var(--border-light); background: rgba(6, 182, 212, 0.25);">0.45</td>
+                                    <td style="padding: 12px; border: 1px solid var(--border-light); background: rgba(6, 182, 212, 0.4);">1.00</td>
+                                    <td style="padding: 12px; border: 1px solid var(--border-light); background: rgba(6, 182, 212, 0.1);">0.12</td>
+                                </tr>
+                                <tr>
+                                    <th style="padding: 12px; border: 1px solid var(--border-light); background: rgba(255,255,255,0.02); text-align: left;">BTC</th>
+                                    <td style="padding: 12px; border: 1px solid var(--border-light); background: rgba(6, 182, 212, 0.2);">0.32</td>
+                                    <td style="padding: 12px; border: 1px solid var(--border-light); background: rgba(244, 63, 94, 0.08);">-0.08</td>
+                                    <td style="padding: 12px; border: 1px solid var(--border-light); background: rgba(6, 182, 212, 0.1);">0.12</td>
+                                    <td style="padding: 12px; border: 1px solid var(--border-light); background: rgba(6, 182, 212, 0.4);">1.00</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Şirket Kümeleme ve Sektör Haritası (K-Means & RobustScaler) Bileşeni -->
+                <div class="clustering-card glass" id="sectorClusteringSection">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--border-light);">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div class="kpi-icon bg-indigo-dim" style="width: 38px; height: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                <i data-lucide="network" class="text-indigo" style="width: 22px; height: 22px;"></i>
+                            </div>
+                            <div>
+                                <h2 style="font-size: 1.15rem; font-weight: 700; margin: 0;" id="clusteringHeaderTitle">BIST Şirket Kümeleme & Sektör Haritası (ML K-Means)</h2>
+                                <p style="font-size: 0.78rem; color: var(--text-secondary); margin: 2px 0 0 0;">
+                                    5 Bilanço Rasyosu (ROE, Satış Büyümesi, Borç/Özkaynak, F/K, Cari Oran) üzerinden RobustScaler & K-Means (k=4) Analizi
+                                </p>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="badge-live-cyan"><span class="pulse-dot"></span> Scikit-Learn RobustScaler</span>
+                            <span class="badge-live-green" id="clusterActivePeerBadge"><i data-lucide="crosshair" style="width: 12px; height: 12px;"></i> THYAO Aktif</span>
+                        </div>
+                    </div>
+
+                    <!-- 4 Küme Kartları Özeti -->
+                    <div class="cluster-cards-grid" id="clusterCardsContainer">
+                        <div class="cluster-summary-card" style="border-top: 2px solid #10B981;">
+                            <div class="cluster-card-head">
+                                <span class="cluster-card-name" style="color: #10B981;">1. Yüksek Kârlı / Güçlü Büyüme</span>
+                                <span class="cluster-card-count" style="background: rgba(16, 185, 129, 0.15); color: #10B981;" id="countCluster0">6 Hisse</span>
+                            </div>
+                            <div style="font-size: 0.72rem; color: var(--text-secondary);">Yüksek ROE (>%25) ve çift haneli satış büyümesi liderleri.</div>
+                            <div class="cluster-card-stats">
+                                <span>Ort. ROE: <strong class="text-emerald" id="roeCluster0">%33.8</strong></span>
+                                <span>Ort. Büyüme: <strong class="text-emerald" id="growthCluster0">%45.2</strong></span>
+                            </div>
+                            <div class="cluster-card-tickers" id="tickersCluster0">
+                                <span class="cluster-ticker-tag" style="border: 1px solid #10B981; color: #10B981;">THYAO</span>
+                                <span class="cluster-ticker-tag">PGSUS</span>
+                                <span class="cluster-ticker-tag">BIMAS</span>
+                                <span class="cluster-ticker-tag">FROTO</span>
+                                <span class="cluster-ticker-tag">ASELS</span>
+                            </div>
+                        </div>
+
+                        <div class="cluster-summary-card" style="border-top: 2px solid #00F2FE;">
+                            <div class="cluster-card-head">
+                                <span class="cluster-card-name" style="color: #00F2FE;">2. Kelepir Değer / Fırsat</span>
+                                <span class="cluster-card-count" style="background: rgba(0, 242, 254, 0.15); color: #00F2FE;" id="countCluster1">5 Hisse</span>
+                            </div>
+                            <div style="font-size: 0.72rem; color: var(--text-secondary);">Düşük F/K (<6x), kontrollü borç ve güçlü nakit akışı.</div>
+                            <div class="cluster-card-stats">
+                                <span>Ort. F/K: <strong class="text-cyan" id="peCluster1">4.1x</strong></span>
+                                <span>Ort. Borç: <strong class="text-cyan" id="debtCluster1">0.68x</strong></span>
+                            </div>
+                            <div class="cluster-card-tickers" id="tickersCluster1">
+                                <span class="cluster-ticker-tag">KCHOL</span>
+                                <span class="cluster-ticker-tag">SAHOL</span>
+                                <span class="cluster-ticker-tag">TUPRS</span>
+                                <span class="cluster-ticker-tag">TOASO</span>
+                            </div>
+                        </div>
+
+                        <div class="cluster-summary-card" style="border-top: 2px solid #F43F5E;">
+                            <div class="cluster-card-head">
+                                <span class="cluster-card-name" style="color: #F43F5E;">3. Aşırı Kaldıraçlı / Riskli</span>
+                                <span class="cluster-card-count" style="background: rgba(244, 63, 94, 0.15); color: #F43F5E;" id="countCluster2">4 Hisse</span>
+                            </div>
+                            <div style="font-size: 0.72rem; color: var(--text-secondary);">Yüksek Borç/Özkaynak (>1.8x) ve zayıf cari oran stresi.</div>
+                            <div class="cluster-card-stats">
+                                <span>Ort. Borç: <strong class="text-rose" id="debtCluster2">2.25x</strong></span>
+                                <span>Cari Oran: <strong class="text-rose" id="crCluster2">0.96x</strong></span>
+                            </div>
+                            <div class="cluster-card-tickers" id="tickersCluster2">
+                                <span class="cluster-ticker-tag">PETKM</span>
+                                <span class="cluster-ticker-tag">ARCLK</span>
+                                <span class="cluster-ticker-tag">TAVHL</span>
+                            </div>
+                        </div>
+
+                        <div class="cluster-summary-card" style="border-top: 2px solid #F59E0B;">
+                            <div class="cluster-card-head">
+                                <span class="cluster-card-name" style="color: #F59E0B;">4. Durgun / Defansif</span>
+                                <span class="cluster-card-count" style="background: rgba(245, 158, 11, 0.15); color: #F59E0B;" id="countCluster3">6 Hisse</span>
+                            </div>
+                            <div style="font-size: 0.72rem; color: var(--text-secondary);">Düşük ciro büyümesi ve sınırlı kârlılık ivmesi.</div>
+                            <div class="cluster-card-stats">
+                                <span>Ort. ROE: <strong class="text-amber" id="roeCluster3">%7.4</strong></span>
+                                <span>Ort. Büyüme: <strong class="text-amber" id="growthCluster3">%14.2</strong></span>
+                            </div>
+                            <div class="cluster-card-tickers" id="tickersCluster3">
+                                <span class="cluster-ticker-tag">EREGL</span>
+                                <span class="cluster-ticker-tag">KRDMD</span>
+                                <span class="cluster-ticker-tag">SISE</span>
+                                <span class="cluster-ticker-tag">BERA</span>
+                                <span class="cluster-ticker-tag">ENKAI</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2 Kolon: Scatter Plot ve Radar Chart -->
+                    <div class="cluster-charts-grid">
+                        <!-- Sol: Scatter Plot -->
+                        <div class="cluster-chart-box">
+                            <div class="cluster-chart-head">
+                                <div>
+                                    <div class="cluster-chart-title">BIST Kümeleme Scatter Haritası (K-Means)</div>
+                                    <div class="cluster-chart-desc">X: Kârlılık (ROE %) | Y: Borç/Özsermaye (D/E) | Boyut: Piyasa Değeri</div>
+                                </div>
+                                <span class="badge-live-cyan" id="scatterTargetIndicator">Seçili: THYAO</span>
+                            </div>
+                            <div id="clusterScatterPlot" style="height: 400px; width: 100%;"></div>
+                        </div>
+
+                        <!-- Sağ: Radar Chart -->
+                        <div class="cluster-chart-box">
+                            <div class="cluster-chart-head">
+                                <div>
+                                    <div class="cluster-chart-title" id="radarTargetTitle">Finansal Boyut Radarı (THYAO)</div>
+                                    <div class="cluster-chart-desc">Şirket vs Sektör Akranları vs Küme Ortalaması (0-100 Skala)</div>
+                                </div>
+                                <div style="display: flex; gap: 8px; font-size: 0.68rem;">
+                                    <span style="color: #00F2FE;">● Şirket</span>
+                                    <span style="color: #F59E0B;">● Sektör</span>
+                                    <span style="color: #10B981;">● Küme</span>
+                                </div>
+                            </div>
+                            <div id="clusterRadarChart" style="height: 400px; width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Sektör ve Küme Akran Karşılaştırma Tablosu -->
+                    <div style="margin-top: 18px; background: rgba(10, 14, 23, 0.65); border: 1px solid var(--border-light); border-radius: 12px; padding: 18px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                            <div>
+                                <h3 style="font-size: 0.95rem; font-weight: 700; margin: 0;" id="peerTableTitle">Sektör & Küme Akran Karşılaştırma Matrisi (THYAO)</h3>
+                                <p style="font-size: 0.72rem; color: var(--text-secondary); margin: 2px 0 0 0;">Doğrudan sektör rakipleri ve aynı kümedeki şirketlerin finansal karşılaştırması</p>
+                            </div>
+                            <span class="badge-live-cyan" id="peerTableSectorBadge">Havacılık / Ulaştırma Sektörü</span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Hisse</th>
+                                        <th>Şirket Adı</th>
+                                        <th>Sektör</th>
+                                        <th>Küme Grubu</th>
+                                        <th>ROE (%)</th>
+                                        <th>Satış Büyümesi</th>
+                                        <th>Borç / Özsermaye</th>
+                                        <th>F/K</th>
+                                        <th>Cari Oran</th>
+                                        <th>Piyasa Değeri</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="clusterPeersTableBody">
+                                    <!-- Populated dynamically by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- View: Fundamental Analysis (Bilanço & Temel Analiz) -->
+            <div id="view-fundamental" class="dashboard-container view-container" style="display: none;">
+                <div class="page-title" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px;">
+                    <div>
+                        <h1 data-i18n="fund_title">Bilanço & Temel Finansal Analiz</h1>
+                        <p data-i18n="fund_desc">BIST finansal tabloları, kârlılık, likidite, DuPont ayrıştırması ve değerleme çarpanları.</p>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <span style="font-size: 0.8rem; color: var(--text-muted);">Dönem:</span>
+                        <div class="button-group" id="fundPeriodButtons" style="display: flex; background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 6px; overflow: hidden;">
+                            <button class="btn active" data-period="all" style="border: none; border-radius: 0; background: var(--color-cyan); color: #000; padding: 6px 12px; font-size: 0.8rem; font-weight: 600;">Tümü (Yıllık)</button>
+                            <button class="btn" data-period="2026/06" style="border: none; border-radius: 0; background: transparent; padding: 6px 12px; font-size: 0.8rem; font-weight: 500;">2026/06</button>
+                            <button class="btn" data-period="2025/12" style="border: none; border-radius: 0; background: transparent; padding: 6px 12px; font-size: 0.8rem; font-weight: 500;">2025/12</button>
+                            <button class="btn" data-period="2024/12" style="border: none; border-radius: 0; background: transparent; padding: 6px 12px; font-size: 0.8rem; font-weight: 500;">2024/12</button>
+                            <button class="btn" data-period="2023/12" style="border: none; border-radius: 0; background: transparent; padding: 6px 12px; font-size: 0.8rem; font-weight: 500;">2023/12</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Valuation Multiples & Ratios KPIs -->
+                <div class="kpi-grid">
+                    <div class="kpi-card glass">
+                        <div class="kpi-header">
+                            <span class="kpi-label">F/K (Fiyat / Kazanç)</span>
+                            <span class="trend neutral" id="fundPeTrend">Piyasa Çarpanı</span>
+                        </div>
+                        <div class="kpi-body">
+                            <h3 class="kpi-value text-cyan" id="fundPeVal">--</h3>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);" id="fundPeSector">Sektör Ort: 8.4x</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card glass">
+                        <div class="kpi-header">
+                            <span class="kpi-label">PD/DD (Piyasa / Defter)</span>
+                            <span class="trend positive"><i data-lucide="shield-check" style="width:12px;"></i> Sağlıklı</span>
+                        </div>
+                        <div class="kpi-body">
+                            <h3 class="kpi-value text-emerald" id="fundPbVal">--</h3>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">Özkaynak Değerlemesi</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card glass">
+                        <div class="kpi-header">
+                            <span class="kpi-label">FD / FAVÖK (EV / EBITDA)</span>
+                            <span class="trend neutral">Operasyonel Çarpan</span>
+                        </div>
+                        <div class="kpi-body">
+                            <h3 class="kpi-value text-indigo" id="fundEvEbitdaVal">--</h3>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);" id="fundEvVal">Net Borç Dahil Firma Değeri</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card glass">
+                        <div class="kpi-header">
+                            <span class="kpi-label">Hisse Başına Kâr (EPS)</span>
+                            <span class="trend positive">+%24 YoY</span>
+                        </div>
+                        <div class="kpi-body">
+                            <h3 class="kpi-value text-cyan" id="fundEpsVal">₺--</h3>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">Yıllıklandırılmış Kâr Payı</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DuPont 3-Stage Decomposition Tree -->
+                <div class="chart-card glass" style="padding: 24px;">
+                    <div class="chart-header">
+                        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                            <div>
+                                <h2 data-i18n="fund_dupont_title">DuPont Kârlılık Ayrıştırması (3-Aşamalı ROE Modeli)</h2>
+                                <p style="font-size:0.85rem; color:var(--text-secondary);">ROE = Net Kâr Marjı (Kârlılık) × Aktif Devir Hızı (Verimlilik) × Kaldıraç Çarpanı (Finansal Yapı)</p>
+                            </div>
+                            <span class="badge" style="background:var(--color-indigo); padding: 4px 10px;">DuPont Analizi</span>
+                        </div>
+                    </div>
+                    <div class="dupont-tree" style="margin-top: 20px;">
+                        <div class="dupont-root">
+                            <div class="dupont-box" style="border-color: var(--color-cyan); min-width: 260px; background: rgba(6, 182, 212, 0.08);">
+                                <span class="dupont-title" data-i18n="fund_dupont_roe">Özkaynak Kârlılığı (ROE)</span>
+                                <div class="dupont-val text-cyan" id="dupontRoeVal">%--</div>
+                                <div class="dupont-desc">Toplam Şirket Sermaye Verimliliği</div>
+                            </div>
+                        </div>
+                        <div style="text-align: center; color: var(--text-muted); font-size: 1.2rem; font-weight: bold;">=</div>
+                        <div class="dupont-branches">
+                            <div class="dupont-box">
+                                <span class="dupont-title" data-i18n="fund_dupont_margin">1. Net Kâr Marjı (Net Margin)</span>
+                                <div class="dupont-val text-emerald" id="dupontMarginVal">%--</div>
+                                <div class="dupont-desc">Net Kâr / Satış Hasılatı</div>
+                            </div>
+                            <div class="dupont-box">
+                                <span class="dupont-title" data-i18n="fund_dupont_turnover">2. Aktif Devir Hızı (Asset Turnover)</span>
+                                <div class="dupont-val text-indigo" id="dupontTurnoverVal">--x</div>
+                                <div class="dupont-desc">Hasılat / Toplam Varlıklar</div>
+                            </div>
+                            <div class="dupont-box">
+                                <span class="dupont-title" data-i18n="fund_dupont_leverage">3. Özkaynak Çarpanı (Leverage Multiplier)</span>
+                                <div class="dupont-val text-amber" id="dupontLeverageVal">--x</div>
+                                <div class="dupont-desc">Toplam Varlıklar / Özkaynaklar</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fundamental Charts Grid -->
+                <div class="charts-grid">
+                    <div class="chart-card glass span-2">
+                        <div class="chart-header">
+                            <div>
+                                <h2 data-i18n="fund_chart_comp">Varlık ve Borç/Özkaynak Kompozisyonu (Bilanço Dağılımı)</h2>
+                                <p data-i18n="chart_trends_desc">Dönen, Duran Varlıklar ile Kısa/Uzun Vadeli Borçlar ve Özkaynak gelişimi.</p>
+                            </div>
+                        </div>
+                        <div class="chart-body" style="height: 340px;">
+                            <canvas id="chart-fundamental-comp"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="chart-card glass">
+                        <div class="chart-header">
+                            <div>
+                                <h2 data-i18n="fund_chart_waterfall">Gelir Tablosu Karlılık Basamakları</h2>
+                                <p style="font-size:0.85rem; color:var(--text-secondary);">Hasılat, Maliyet, Brüt Kâr ve Net Kâr.</p>
+                            </div>
+                        </div>
+                        <div class="chart-body" style="height: 340px;">
+                            <canvas id="chart-fundamental-waterfall"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comprehensive Multi-Period Balance Sheet Table -->
+                <div class="table-card glass">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h2 data-i18n="fund_ratios_title">Finansal Tablo Detayları & Dönemler Arası Karşılaştırma</h2>
+                            <p style="font-size:0.85rem; color:var(--text-secondary); margin-top:2px;" id="fundCompanySubtitle">Türk Hava Yolları A.O. Resmi Bilanço Verileri</p>
+                        </div>
+                        <span class="badge" style="background: var(--bg-panel-hover); border:1px solid var(--border-light); color:var(--color-cyan); padding: 4px 10px;">Milyar TL Formatı</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Finansal Kalem (₺ Milyar)</th>
+                                    <th style="text-align: right;">2026/06 (Son)</th>
+                                    <th style="text-align: right;">2025/12</th>
+                                    <th style="text-align: right;">2024/12</th>
+                                    <th style="text-align: right;">2023/12</th>
+                                    <th style="text-align: right;">YoY Büyüme %</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fundFinancialsTableBody">
+                                <!-- Populated dynamically by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- View: Event Study (Bilanço Sürprizi & CAR) -->
+            <div id="view-eventstudy" class="dashboard-container view-container" style="display: none;">
+                <div class="page-title" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px;">
+                    <div>
+                        <h1 data-i18n="es_title">Event Study: Bilanço Sürprizleri & CAR Analizi</h1>
+                        <p data-i18n="es_desc">KAP bilanço açıklanma gününde piyasa reaksiyonu, beklenmeyen kâr (SUE) ve kümülatif anormal getiriler (CAR).</p>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <span class="badge" style="background: rgba(6, 182, 212, 0.15); border: 1px solid var(--color-cyan); color: var(--color-cyan); padding: 6px 12px; font-weight: 600;">
+                            Methodology: MacKinlay (1997) Market Model
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Event Study KPIs -->
+                <div class="kpi-grid">
+                    <div class="kpi-card glass">
+                        <div class="kpi-header">
+                            <span class="kpi-label">Son Çeyrek Bilanço Sürprizi</span>
+                            <span class="trend positive" id="esSurpriseBadge"><i data-lucide="trending-up"></i> +%32.2</span>
+                        </div>
+                        <div class="kpi-body">
+                            <h3 class="kpi-value text-emerald" id="esSurpriseVal">+₺4.57 Mrd</h3>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);" id="esSurpriseSub">Beklenti: ₺14.2 Mrd | Gerçekleşen: ₺18.8 Mrd</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card glass">
+                        <div class="kpi-header">
+                            <span class="kpi-label">SUE Z-Skoru (Beklenmeyen Kâr)</span>
+                            <span class="trend positive">Güçlü Sinyal</span>
+                        </div>
+                        <div class="kpi-body">
+                            <h3 class="kpi-value text-cyan" id="esSueVal">+2.18 σ</h3>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">Standardized Unexpected Earnings</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card glass">
+                        <div class="kpi-header">
+                            <span class="kpi-label">T+1 Günlük Piyasa Tepkisi</span>
+                            <span class="trend positive" id="esDayTrend">+%4.6</span>
+                        </div>
+                        <div class="kpi-body">
+                            <h3 class="kpi-value" id="esDayReactionVal">+%4.60</h3>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">Açıklanma Sonrası İlk İşlem Günü</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card glass">
+                        <div class="kpi-header">
+                            <span class="kpi-label">10-Günlük CAR (Kümülatif Anormal Getiri)</span>
+                            <span class="trend positive">PEAD Drift</span>
+                        </div>
+                        <div class="kpi-body">
+                            <h3 class="kpi-value text-emerald" id="esCar10Val">+%8.90</h3>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);" id="esSignalSub">Model Önerisi: GÜÇLÜ AL</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CAR Curve Chart & Econometric Panel -->
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+                    <div class="chart-card glass">
+                        <div class="chart-header">
+                            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                <div>
+                                    <h2 data-i18n="es_chart_car">Kümülatif Anormal Getiri (CAR) Zaman Yolu [-10, +10 Gün]</h2>
+                                    <p data-i18n="es_chart_car_desc">Bilanço açıklanma günü (t=0) etrafındaki piyasa fiyatlaması ve %95 güven aralığı.</p>
+                                </div>
+                                <span class="badge" style="background: var(--color-cyan); color: #000; font-weight: 700;">t=0 OLAY GÜNÜ</span>
+                            </div>
+                        </div>
+                        <div class="chart-body" style="height: 360px;">
+                            <canvas id="chart-eventstudy-car"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="table-card glass" style="padding: 24px; display: flex; flex-direction: column; justify-content: space-between;">
+                        <div>
+                            <div class="card-header" style="margin-bottom: 16px;">
+                                <h2 style="font-size: 1.05rem;">Event Study Ekonometrik Özeti</h2>
+                                <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;">Piyasa Modeli Hipotez Testi Sonuçları</p>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 14px; font-size: 0.85rem;">
+                                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-light); padding-bottom: 8px;">
+                                    <span style="color: var(--text-secondary);">Tahmin Penceresi:</span>
+                                    <strong style="font-family: monospace;">[-120, -11] Gün</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-light); padding-bottom: 8px;">
+                                    <span style="color: var(--text-secondary);">Olay Penceresi (Event):</span>
+                                    <strong style="font-family: monospace;">[-10, +10] Gün</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-light); padding-bottom: 8px;">
+                                    <span style="color: var(--text-secondary);">CAAR (Ortalama CAR):</span>
+                                    <strong class="text-emerald" id="esCaarVal">+%5.10</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-light); padding-bottom: 8px;">
+                                    <span style="color: var(--text-secondary);">Test İstatistiği (t-Stat):</span>
+                                    <strong class="text-cyan" id="esTStatVal">3.42 (p < 0.001)</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-light); padding-bottom: 8px;">
+                                    <span style="color: var(--text-secondary);">PEAD Drift Süresi:</span>
+                                    <strong id="esDriftDaysVal">14 İşlem Günü</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="color: var(--text-secondary);">Öngörülen Alpha Potansiyeli:</span>
+                                    <strong class="text-emerald" id="esAlphaSignalVal">+1.85% (30-Gün)</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 12px; margin-top: 16px;">
+                            <div style="display:flex; align-items:center; gap:8px; color:var(--color-emerald); font-weight:600; font-size:0.85rem;">
+                                <i data-lucide="check-circle" style="width:16px;"></i> PEAD Sinyali Aktif
+                            </div>
+                            <p style="font-size:0.75rem; color:var(--text-secondary); margin-top:4px;">
+                                Şirketin açıkladığı net kâr konsensüs beklentinin 2 standart sapma üzerinde gerçekleşti. Anormal pozitif getiri trendinin devam etmesi olasılığı %82.4.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Historical Announcements Table -->
+                <div class="table-card glass">
+                    <div class="card-header">
+                        <h2 data-i18n="es_table_title">Tarihsel Bilanço Açıklamaları & Sürpriz Skoru (SUE)</h2>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th data-i18n="es_th_period">Dönem</th>
+                                    <th data-i18n="es_th_date">Açıklanma Tarihi</th>
+                                    <th data-i18n="es_th_est">Konsensüs Beklenti</th>
+                                    <th data-i18n="es_th_act">Gerçekleşen Kâr</th>
+                                    <th data-i18n="es_th_surp">Sürpriz</th>
+                                    <th data-i18n="es_th_sue">SUE Skoru</th>
+                                    <th data-i18n="es_th_t1">T+1 Tepki</th>
+                                    <th data-i18n="es_th_car">10-Günlük CAR</th>
+                                    <th data-i18n="es_th_signal">Kantitatif Sinyal</th>
+                                </tr>
+                            </thead>
+                            <tbody id="esEventsTableBody">
+                                <!-- Populated dynamically by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- View: Multi-Factor Regression (Çok Faktörlü Regresyon) -->
+            <div id="view-multifactor" class="dashboard-container view-container" style="display: none;">
+                <div class="page-title" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px;">
+                    <div>
+                        <h1 data-i18n="mf_title">Çok Faktörlü Risk & Faktör Regresyonu</h1>
+                        <p data-i18n="mf_desc">Fama-French 3/5 Faktör + Momentum + Kur ve Faiz duyarlılık regresyon modeli.</p>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-secondary" id="runRegressionBtn" style="display: flex; align-items: center; gap: 8px;">
+                            <i data-lucide="refresh-cw" style="width: 14px;"></i> <span>Regresyonu Yeniden Hesapla (OLS/HAC)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Goodness of Fit KPIs -->
+                <div class="kpi-grid">
+                    <div class="kpi-card glass">
+                        <div class="kpi-header">
+                            <span class="kpi-label">Jensen's Alpha (Yıllık Fazla Getiri)</span>
+                            <span class="trend positive" id="mfAlphaTrend">p = 0.003 ***</span>
+                        </div>
+                        <div class="kpi-body">
+                            <h3 class="kpi-value text-emerald" id="mfAlphaVal">+%7.20</h3>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);" id="mfAlphaSub">t-İstatistiği: 2.94 | Riskten Arındırılmış Alpha</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card glass">
+                        <div class="kpi-header">
+                            <span class="kpi-label">R² (Açıklanan Getiri Varyansı)</span>
+                            <span class="trend positive">Güçlü Model</span>
+                        </div>
+                        <div class="kpi-body">
+                            <h3 class="kpi-value text-cyan" id="mfR2Val">0.835</h3>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);" id="mfAdjR2Val">Düzeltilmiş R²: 0.821 | F-Stat: 58.4</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card glass">
+                        <div class="kpi-header">
+                            <span class="kpi-label">Piyasa Betası (BIST30 Risk Primi)</span>
+                            <span class="trend neutral" id="mfBetaBadge">Döngüsel Varlık</span>
+                        </div>
+                        <div class="kpi-body">
+                            <h3 class="kpi-value text-indigo" id="mfMarketBetaVal">1.15</h3>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">Sistematik Risk Katsayısı</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card glass">
+                        <div class="kpi-header">
+                            <span class="kpi-label">Durbin-Watson Otokorelasyon Testi</span>
+                            <span class="trend positive">İdeal Düzey</span>
+                        </div>
+                        <div class="kpi-body">
+                            <h3 class="kpi-value" id="mfDwVal">2.04</h3>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">Artıklarda Otokorelasyon Yok (~2.0)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Factor Betas Table -->
+                <div class="table-card glass">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2 data-i18n="mf_table_title">Faktör Katsayıları (Betalar & Anlamlılık İstatistikleri)</h2>
+                        <span style="font-size: 0.75rem; color: var(--text-muted);">* p < 0.05 | ** p < 0.01 | *** p < 0.001</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th data-i18n="mf_th_factor">Risk Faktörü</th>
+                                    <th data-i18n="mf_th_beta">Faktör Duyarlılığı (Beta)</th>
+                                    <th data-i18n="mf_th_stderr">Standart Hata</th>
+                                    <th data-i18n="mf_th_tstat">t-İstatistiği</th>
+                                    <th data-i18n="mf_th_pval">p-Değeri</th>
+                                    <th data-i18n="mf_th_vif">VIF (Çoklu Doğrusallık)</th>
+                                    <th data-i18n="mf_th_sig">Anlamlılık</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mfFactorsTableBody">
+                                <!-- Populated dynamically by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Factor Risk Attribution & Interactive Simulator -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                    <div class="chart-card glass">
+                        <div class="chart-header">
+                            <h2 data-i18n="mf_chart_attr">Risk Ayrıştırması & Faktör Varyans Katkısı</h2>
+                            <p style="font-size: 0.85rem; color: var(--text-secondary);">Hissenin toplam volatilitesinin hangi risk faktörlerinden kaynaklandığı.</p>
+                        </div>
+                        <div class="chart-body" style="height: 320px;">
+                            <canvas id="chart-multifactor-attr"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="table-card glass" style="padding: 24px;">
+                        <div class="card-header" style="margin-bottom: 16px;">
+                            <h2 data-i18n="mf_sim_title">İnteraktif Faktör Şok Tahmincisi</h2>
+                            <p style="font-size: 0.85rem; color: var(--text-secondary);">Faktör hareketlerine göre hissenin beklenen getirisini anında hesaplayın.</p>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 16px;">
+                            <div class="slider-group">
+                                <label>
+                                    <span>BIST 100 Getirisi (MKT %)</span>
+                                    <span class="sim-val" id="mfSimMktVal">+0.0%</span>
+                                </label>
+                                <input type="range" class="sim-slider" id="mfSimMktSlider" min="-20" max="20" value="0" step="1">
+                            </div>
+                            <div class="slider-group">
+                                <label>
+                                    <span>USD/TRY Kuru Değişimi (%)</span>
+                                    <span class="sim-val" id="mfSimUsdVal">+0.0%</span>
+                                </label>
+                                <input type="range" class="sim-slider" id="mfSimUsdSlider" min="-15" max="35" value="0" step="1">
+                            </div>
+                            <div class="slider-group">
+                                <label>
+                                    <span>Politika Faizi Şoku (bps)</span>
+                                    <span class="sim-val" id="mfSimIrVal">0 bps</span>
+                                </label>
+                                <input type="range" class="sim-slider" id="mfSimIrSlider" min="-500" max="1500" value="0" step="50">
+                            </div>
+                            
+                            <div style="background: rgba(6, 182, 212, 0.08); border: 1px solid var(--color-cyan-dim); border-radius: 8px; padding: 16px; margin-top: 8px; display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <span style="font-size: 0.8rem; color: var(--text-secondary); display: block;">Modelin Öngördüğü Hisse Getirisi:</span>
+                                    <strong style="font-size: 1.4rem; font-family: monospace;" class="text-cyan" id="mfSimExpectedReturn">+0.00%</strong>
+                                </div>
+                                <button class="btn btn-secondary" id="resetMfSimBtn" style="padding: 6px 12px; font-size: 0.8rem;">Sıfırla</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- View: Big Data Stream (Büyük Veri Akışı - LIVE) -->
+            <div id="view-pipeline" class="dashboard-container view-container" style="display: none;">
+                <div class="page-title" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px;">
+                    <div>
+                        <h1 data-i18n="pipe_title">Büyük Veri Akışı & Algoritmik Olay Motoru</h1>
+                        <p data-i18n="pipe_desc">Apache Arrow / Kafka simülatörü ile BIST L2 tick akışı, olay işleme ve anomali tespiti.</p>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <button class="btn btn-primary" id="syncBist100Btn" style="background: linear-gradient(135deg, #00F2FE 0%, #0099FF 100%); color: #020617; font-weight: 600; border: none; box-shadow: 0 0 16px rgba(0,242,254,0.3); display: flex; align-items: center; gap: 8px;">
+                            <i data-lucide="refresh-cw" id="syncBist100Icon" style="width: 14px;"></i> <span id="syncBist100Text">BIST 100 Verilerini Güncelle</span>
+                        </button>
+                        <button class="btn btn-secondary" id="pipeAnomalyBtn">
+                            <i data-lucide="zap" style="width: 14px;" class="text-amber"></i> <span data-i18n="pipe_btn_anomaly">Volatilite Şoku Enjekte Et</span>
+                        </button>
+                        <button class="btn btn-secondary" id="pipeStreamToggleBtn">
+                            <i data-lucide="pause" style="width: 14px;" id="pipeToggleIcon"></i> <span id="pipeToggleText" data-i18n="pipe_btn_pause">Akışı Duraklat</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Active Data Sources Status Indicators -->
+                <div class="source-grid" id="dataSourcesGrid">
+                    <!-- Source 1: KAP Scraper -->
+                    <div class="source-card">
+                        <div class="source-header">
+                            <div class="source-title-group">
+                                <div class="source-icon-wrap" style="color: var(--color-emerald); background: rgba(16,185,129,0.08);">
+                                    <i data-lucide="file-text" style="width: 18px;"></i>
+                                </div>
+                                <div>
+                                    <div class="source-name">KAP Scraper & UFRS Ayrıştırıcı</div>
+                                    <div class="source-sub">Kamuyu Aydınlatma Platformu</div>
+                                </div>
+                            </div>
+                            <span class="badge-live-green" id="kapStatusBadge">
+                                <span class="pulse-dot"></span> Dinlemede
+                            </span>
+                        </div>
+                        <div class="source-metrics-grid">
+                            <div class="source-metric-item">
+                                <span class="source-metric-label">Son Yoklama</span>
+                                <span class="source-metric-val text-emerald" id="kapLastPoll">5 sn önce</span>
+                            </div>
+                            <div class="source-metric-item">
+                                <span class="source-metric-label">Başarı Oranı</span>
+                                <span class="source-metric-val" id="kapSuccessRate">%99.98</span>
+                            </div>
+                            <div class="source-metric-item">
+                                <span class="source-metric-label">Parse Gecikmesi</span>
+                                <span class="source-metric-val text-cyan" id="kapLatency">142 ms</span>
+                            </div>
+                            <div class="source-metric-item">
+                                <span class="source-metric-label">Kapsam</span>
+                                <span class="source-metric-val" style="font-size:0.75rem;">BIST 100 UFRS</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Source 2: Yahoo Finance API -->
+                    <div class="source-card">
+                        <div class="source-header">
+                            <div class="source-title-group">
+                                <div class="source-icon-wrap" style="color: var(--color-cyan); background: rgba(0,242,254,0.08);">
+                                    <i data-lucide="trending-up" style="width: 18px;"></i>
+                                </div>
+                                <div>
+                                    <div class="source-name">Yahoo Finance / EOD Fiyat API</div>
+                                    <div class="source-sub">Günlük OHLCV Bar Motoru</div>
+                                </div>
+                            </div>
+                            <span class="badge-live-green" id="yahooStatusBadge">
+                                <span class="pulse-dot"></span> Bağlı
+                            </span>
+                        </div>
+                        <div class="source-metrics-grid">
+                            <div class="source-metric-item">
+                                <span class="source-metric-label">Kalan İstek Kotası</span>
+                                <span class="source-metric-val text-cyan" id="yahooQuota">%98.6 (2K/dk)</span>
+                            </div>
+                            <div class="source-metric-item">
+                                <span class="source-metric-label">Günlük Bar Hacmi</span>
+                                <span class="source-metric-val" id="yahooBars">52,400 Satır</span>
+                            </div>
+                            <div class="source-metric-item">
+                                <span class="source-metric-label">Son Senkron</span>
+                                <span class="source-metric-val text-emerald" id="yahooLastSync">1 dk önce</span>
+                            </div>
+                            <div class="source-metric-item">
+                                <span class="source-metric-label">Kapsam</span>
+                                <span class="source-metric-val" style="font-size:0.75rem;">252 Günlük Seri</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Source 3: BIST WebSocket Feed -->
+                    <div class="source-card">
+                        <div class="source-header">
+                            <div class="source-title-group">
+                                <div class="source-icon-wrap" style="color: var(--color-indigo); background: rgba(99,102,241,0.08);">
+                                    <i data-lucide="radio" style="width: 18px;"></i>
+                                </div>
+                                <div>
+                                    <div class="source-name">BIST L2 FIX / WebSocket Feed</div>
+                                    <div class="source-sub">Borsa İstanbul Level 2 Akışı</div>
+                                </div>
+                            </div>
+                            <span class="badge-live-cyan" id="bistWsBadge">
+                                <span class="pulse-dot"></span> Canlı Akış
+                            </span>
+                        </div>
+                        <div class="source-metrics-grid">
+                            <div class="source-metric-item">
+                                <span class="source-metric-label">Ağ Gecikmesi</span>
+                                <span class="source-metric-val text-cyan" id="wsLatency">11.8 ms</span>
+                            </div>
+                            <div class="source-metric-item">
+                                <span class="source-metric-label">Consumer Lag</span>
+                                <span class="source-metric-val text-emerald" id="wsLag">0 msgs</span>
+                            </div>
+                            <div class="source-metric-item">
+                                <span class="source-metric-label">Throughput</span>
+                                <span class="source-metric-val" id="wsThroughput">14,820 EPS</span>
+                            </div>
+                            <div class="source-metric-item">
+                                <span class="source-metric-label">Bölümler</span>
+                                <span class="source-metric-val text-emerald" style="font-size:0.75rem;">4/4 Aktif</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Big Data KPIs -->
+                <div class="kpi-grid">
+                    <div class="kpi-card glass">
+                        <div class="kpi-header">
+                            <span class="kpi-label" data-i18n="pipe_throughput">Throughput (Olay / sn)</span>
+                            <span class="trend positive"><span class="pulse-dot"></span> LIVE</span>
+                        </div>
+                        <div class="kpi-body">
+                            <h3 class="kpi-value text-cyan" id="pipeThroughputVal">14,820 EPS</h3>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">Kafka Ingestion Queue</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card glass">
+                        <div class="kpi-header">
+                            <span class="kpi-label" data-i18n="pipe_datarate">Veri Hızı (MB / sn)</span>
+                            <span class="trend positive"><i data-lucide="activity" style="width:12px;"></i> %99.9 Uptime</span>
+                        </div>
+                        <div class="kpi-body">
+                            <h3 class="kpi-value text-emerald" id="pipeDataRateVal">44.8 MB/s</h3>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">Arrow IPC Vectorized Buffer</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card glass">
+                        <div class="kpi-header">
+                            <span class="kpi-label" data-i18n="pipe_latency">Uçtan Uca Gecikme (p99)</span>
+                            <span class="trend positive">Ultra-Low</span>
+                        </div>
+                        <div class="kpi-body">
+                            <h3 class="kpi-value text-indigo" id="pipeLatencyVal">4.2 ms</h3>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">p50: 1.6 ms | p99: 4.2 ms</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card glass">
+                        <div class="kpi-header">
+                            <span class="kpi-label" data-i18n="pipe_schema">Arrow Şema Doğrulama</span>
+                            <span class="trend positive"><i data-lucide="check" style="width:12px;"></i> 0 Desync</span>
+                        </div>
+                        <div class="kpi-body">
+                            <h3 class="kpi-value" id="pipeSchemaVal">%100 PASS</h3>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">DuckDB In-Memory OLAP</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pipeline Architecture Visualization -->
+                <div class="table-card glass" style="padding: 24px;">
+                    <div class="card-header" style="margin-bottom: 12px;">
+                        <h2 style="font-size: 1.05rem;">Büyük Veri Boru Hattı Mimarisi (Pipeline Architecture)</h2>
+                    </div>
+                    <div class="pipeline-flow">
+                        <div class="flow-node">
+                            <div class="flow-node-title">
+                                <span>1. INGESTION</span>
+                                <i data-lucide="rss" class="text-cyan" style="width: 16px;"></i>
+                            </div>
+                            <div class="flow-node-val" id="node1Val">BIST 30 FIX</div>
+                            <div class="flow-node-sub">Kafka Consumer Group</div>
+                        </div>
+                        <div class="flow-node">
+                            <div class="flow-node-title">
+                                <span>2. SERIALIZATION</span>
+                                <i data-lucide="layers" class="text-emerald" style="width: 16px;"></i>
+                            </div>
+                            <div class="flow-node-val" id="node2Val">Arrow IPC</div>
+                            <div class="flow-node-sub">Zero-Copy Memory Stream</div>
+                        </div>
+                        <div class="flow-node">
+                            <div class="flow-node-title">
+                                <span>3. OLAP ENGINE</span>
+                                <i data-lucide="database" class="text-indigo" style="width: 16px;"></i>
+                            </div>
+                            <div class="flow-node-val" id="node3Val">DuckDB 1.8ms</div>
+                            <div class="flow-node-sub">Vectorized Query Engine</div>
+                        </div>
+                        <div class="flow-node">
+                            <div class="flow-node-title">
+                                <span>4. QUANT ENGINE</span>
+                                <i data-lucide="cpu" class="text-amber" style="width: 16px;"></i>
+                            </div>
+                            <div class="flow-node-val" id="node4Val">VaR / SUE / OLS</div>
+                            <div class="flow-node-sub">Real-Time Risk Broadcast</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Ingested Disclosures & Balance Sheet Stream Table -->
+                <div class="table-card glass" style="padding: 20px; margin-bottom: 24px;">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+                        <div>
+                            <h2 style="font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                                <i data-lucide="table" class="text-cyan" style="width: 18px;"></i>
+                                Son Çekilen Bilanço & KAP Bildirim Akışı
+                            </h2>
+                            <p style="font-size: 0.75rem; color: var(--text-muted); margin: 2px 0 0 0;">
+                                Point-in-Time korumalı çeyreklik finansallar (Look-Ahead Bias engelli: <code>disclosure_date &ge; period_end_date</code>).
+                            </p>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span class="badge" style="background: rgba(16,185,129,0.12); color: #10B981; border: 1px solid rgba(16,185,129,0.3); font-size: 0.75rem;">
+                                <span class="pulse-dot" style="width:6px; height:6px;"></span> Canlı UFRS Tablosu
+                            </span>
+                            <input type="text" id="streamFilterInput" placeholder="Hisse ara (örn: THYAO)..." style="background: rgba(0,0,0,0.4); border: 1px solid var(--border-light); border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; color: var(--text-primary); outline: none; width: 170px;">
+                        </div>
+                    </div>
+
+                    <div style="overflow-x: auto;">
+                        <table class="data-table" id="disclosuresStreamTable" style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr>
+                                    <th>Hisse</th>
+                                    <th>Çeyrek</th>
+                                    <th>KAP İlan Zamanı (PIT)</th>
+                                    <th>Toplam Varlıklar</th>
+                                    <th>Net Dönem Kârı</th>
+                                    <th>Bilanço Sürprizi (SUE)</th>
+                                    <th>Kaynak</th>
+                                    <th>Durum</th>
+                                    <th>Doğrulama</th>
+                                    <th>İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody id="disclosuresTableBody">
+                                <!-- Populated dynamically by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Real-Time Terminal Log Console -->
+                <div class="terminal-window">
+                    <div class="terminal-header">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div class="terminal-dots">
+                                <span class="terminal-dot red"></span>
+                                <span class="terminal-dot yellow"></span>
+                                <span class="terminal-dot green"></span>
+                            </div>
+                            <span data-i18n="pipe_terminal_title">Gerçek Zamanlı Terminal Konsolu (Live Stream Logs)</span>
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <span style="font-size: 0.7rem; color: var(--color-emerald);"><span class="pulse-dot" style="width:6px; height:6px;"></span> WebSocket Connected</span>
+                            <button class="btn btn-secondary" id="clearTerminalBtn" style="padding: 2px 8px; font-size: 0.7rem;">Temizle</button>
+                        </div>
+                    </div>
+                    <div class="terminal-body" id="pipelineTerminalBody">
+                        <!-- Populated continuously by stream generator -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- View: Stress Testing (Stres Testi - What-If & Macro Scenarios) -->
+            <div id="view-stress" class="dashboard-container view-container" style="display: none;">
+                <div class="page-title" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px;">
+                    <div>
+                        <h1 data-i18n="stress_title">Stres Testi & Makro Şok Senaryoları (What-If)</h1>
+                        <p data-i18n="stress_desc">Ekstrem piyasa koşulları, döviz şokları ve Monte Carlo simülasyonu ile bilanço dayanıklılığı.</p>
+                    </div>
+                    <button class="btn btn-secondary" id="resetStressBtn" style="display: flex; align-items: center; gap: 8px;">
+                        <i data-lucide="rotate-ccw" style="width: 14px;"></i> <span>Parametreleri Sıfırla</span>
+                    </button>
+                </div>
+
+                <!-- Preset Scenarios Selection Grid -->
+                <div>
+                    <h3 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 12px; color: var(--text-secondary);" data-i18n="stress_preset_title">Önceden Tanımlı Makro Şok Senaryoları</h3>
+                    <div class="scenario-grid" id="stressScenarioGrid">
+                        <!-- Rendered by JS -->
+                    </div>
+                </div>
+
+                <!-- Interactive Macro Sliders Strip -->
+                <div class="simulation-strip glass">
+                    <div class="sim-header">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <i data-lucide="sliders" class="text-cyan"></i>
+                            <h3 style="font-size: 1rem; font-weight: 600;">İnteraktif Makro Şok Değişkenleri</h3>
+                        </div>
+                        <span class="badge" style="background: var(--bg-panel-hover); border:1px solid var(--border-light); color: var(--color-cyan);">Canlı Simülasyon</span>
+                    </div>
+                    <div class="sim-controls" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+                        <div class="slider-group">
+                            <label>
+                                <span>USD/TRY Kuru Şoku (%)</span>
+                                <span class="sim-val" id="stressFxVal">+0%</span>
+                            </label>
+                            <input type="range" class="sim-slider" id="stressFxSlider" min="-20" max="100" value="0" step="5">
+                        </div>
+                        <div class="slider-group">
+                            <label>
+                                <span>Satış Maliyeti / Hammadde (%)</span>
+                                <span class="sim-val" id="stressCostVal">+0%</span>
+                            </label>
+                            <input type="range" class="sim-slider" id="stressCostSlider" min="0" max="60" value="0" step="5">
+                        </div>
+                        <div class="slider-group">
+                            <label>
+                                <span>Politika Faizi Değişimi (bps)</span>
+                                <span class="sim-val" id="stressRateVal">0 bps</span>
+                            </label>
+                            <input type="range" class="sim-slider" id="stressRateSlider" min="-500" max="2000" value="0" step="50">
+                        </div>
+                        <div class="slider-group">
+                            <label>
+                                <span>Ciro / Hacim Daralması (%)</span>
+                                <span class="sim-val" id="stressRevVal">0%</span>
+                            </label>
+                            <input type="range" class="sim-slider" id="stressRevSlider" min="-40" max="40" value="0" step="5">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stress Test Impact KPIs -->
+                <div class="kpi-grid">
+                    <div class="kpi-card glass">
+                        <div class="kpi-header">
+                            <span class="kpi-label">Şok Altında Yeni Net Kâr</span>
+                            <span class="trend" id="stressNetIncomeTrend">-₺0</span>
+                        </div>
+                        <div class="kpi-body">
+                            <h3 class="kpi-value text-cyan" id="stressNewNetVal">₺--</h3>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);" id="stressNetIncomeDiff">Net Kâr Değişimi: 0%</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card glass">
+                        <div class="kpi-header">
+                            <span class="kpi-label">Şok Altında Yeni FAVÖK</span>
+                            <span class="trend" id="stressEbitdaTrend">-₺0</span>
+                        </div>
+                        <div class="kpi-body">
+                            <h3 class="kpi-value" id="stressNewEbitdaVal">₺--</h3>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);" id="stressEbitdaDiff">FAVÖK Değişimi: 0%</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card glass">
+                        <div class="kpi-header">
+                            <span class="kpi-label">Yeni Cari Oran (Likidite)</span>
+                            <span class="trend" id="stressCrBadge">Sağlam</span>
+                        </div>
+                        <div class="kpi-body">
+                            <h3 class="kpi-value" id="stressNewCrVal">--</h3>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">Kısa Vadeli Borç Karşılama</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card glass">
+                        <div class="kpi-header">
+                            <span class="kpi-label">Stres VaR (%99 Fat-Tail)</span>
+                            <span class="trend negative">Ağır Kuyruk Riski</span>
+                        </div>
+                        <div class="kpi-body">
+                            <h3 class="kpi-value text-rose" id="stressStressedVarVal">-₺--</h3>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">Expected Shortfall (CVaR): -₺--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Profit Erosion Waterfall Chart Card -->
+                <div class="chart-card glass" id="card-stress-waterfall" style="margin-top: 24px;">
+                    <div class="chart-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <i data-lucide="git-commit" style="color: var(--color-cyan); width: 18px; height: 18px;"></i>
+                                <h2 style="margin: 0; font-size: 1.1rem; font-weight: 600;">Kâr Erimesi Şelale (Waterfall) Köprüsü</h2>
+                                <span class="badge" style="background: rgba(244, 63, 94, 0.15); color: var(--color-rose); border: 1px solid rgba(244, 63, 94, 0.3); font-size: 0.72rem;">EBITDA & Net Kâr Duyarlılığı</span>
+                            </div>
+                            <p style="margin: 2px 0 0 0; font-size: 0.8rem; color: var(--text-secondary);">
+                                Başlangıç net kârından makro şokların (Talep, Maliyet, FX Kambiyo, Faiz) erozyon etkisi ve nihai stres kârı.
+                            </p>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 12px; font-size: 0.78rem; font-family: monospace;">
+                            <span style="display: flex; align-items: center; gap: 4px;">
+                                <span style="width: 10px; height: 10px; background: #10B981; display: inline-block; border-radius: 2px;"></span>
+                                <span>Pozitif Katkı</span>
+                            </span>
+                            <span style="display: flex; align-items: center; gap: 4px;">
+                                <span style="width: 10px; height: 10px; background: #F43F5E; display: inline-block; border-radius: 2px;"></span>
+                                <span>Kâr Erozyonu</span>
+                            </span>
+                            <span style="display: flex; align-items: center; gap: 4px;">
+                                <span style="width: 10px; height: 10px; background: #00F2FE; display: inline-block; border-radius: 2px;"></span>
+                                <span>Net Bakiye</span>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="chart-body" style="height: 380px;">
+                        <div id="chart-stress-waterfall" style="height: 100%; width: 100%;"></div>
+                    </div>
+                </div>
+
+                <!-- Monte Carlo Shock Distribution Chart -->
+                <div class="chart-card glass" style="margin-top: 24px;">
+                    <div class="chart-header">
+                        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                            <div>
+                                <h2 data-i18n="stress_mc_chart">Monte Carlo Şok Dağılımı (10.000 Patika)</h2>
+                                <p data-i18n="stress_mc_desc">Normal piyasa koşulları vs. şok altındaki kuyruk riski (Fat-Tail / %99 Stressed VaR).</p>
+                            </div>
+                            <span class="badge" style="background: var(--color-rose);">STRESSED TAIL RISK</span>
+                        </div>
+                    </div>
+                    <div class="chart-body" style="height: 340px;">
+                        <canvas id="chart-stress-mc"></canvas>
+                    </div>
+                </div>
+
+                <!-- Stress Impact Matrix Table -->
+                <div class="table-card glass">
+                    <div class="card-header">
+                        <h2 data-i18n="stress_impact_matrix">Bilanço Kalemleri Şok Etki Matrisi</h2>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Finansal Kalem</th>
+                                    <th>Mevcut Değer (₺ Milyar)</th>
+                                    <th>Simüle Edilen Şok Değeri</th>
+                                    <th>Fark (₺ Milyar)</th>
+                                    <th>Yüzdesel Değişim</th>
+                                    <th>Stres Durumu</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stressMatrixTableBody">
+                                <!-- Populated dynamically by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- View: Model Settings (Model Ayarları) -->
+            <div id="view-settings" class="dashboard-container view-container" style="display: none;">
+                <div class="page-title" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px;">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+                            <h1 data-i18n="settings_title" style="margin: 0;">Kantitatif Model Ayarları & Hiperparametreler</h1>
+                            <span class="badge badge-cyan" id="cfgActiveProfileBadge" style="font-size: 0.72rem; padding: 2px 8px;">Profil: Üretim v3.2</span>
+                            <span class="badge badge-emerald" id="cfgDbSyncBadge" style="font-size: 0.72rem; padding: 2px 8px;"><i data-lucide="database" style="width: 12px; height: 12px; display: inline;"></i> SQLite: Senkronize</span>
+                        </div>
+                        <p data-i18n="settings_desc" style="color: var(--text-secondary); font-size: 0.88rem; margin: 0;">
+                            LSTM zaman serisi, Student's t VaR, Bilanço Event Study ve Çok Faktörlü Panel Regresyon parametrelerinin dinamik yönetim merkezi.
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-secondary" id="settingsResetBtn" style="border: 1px solid var(--border-light); background: rgba(255,255,255,0.03);">
+                            <i data-lucide="rotate-ccw" style="width: 14px; margin-right: 6px;"></i> <span data-i18n="settings_btn_reset">Varsayılanlara Sıfırla</span>
+                        </button>
+                        <button class="btn btn-primary" id="settingsSaveBtn" style="background: linear-gradient(135deg, #00F2FE 0%, #10B981 100%); color: #070b12; font-weight: 600; border: none;">
+                            <i data-lucide="check-check" style="width: 14px; margin-right: 6px;"></i> <span data-i18n="settings_btn_save">Ayarları Kaydet ve Uygula</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 24px; margin-top: 16px;">
+                    <!-- Section 1: Time Series & LSTM Deep Learning -->
+                    <div class="settings-section-card glass" style="border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);">
+                        <div class="card-header" style="border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 12px;">
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i data-lucide="line-chart" class="text-cyan" style="width: 18px; height: 18px;"></i>
+                                    <h2 style="font-size: 1.05rem; font-weight: 600; margin: 0;">1. LSTM & Zaman Serisi Modeli</h2>
+                                </div>
+                                <span class="text-muted" style="font-size: 0.75rem;">PyTorch / Sequential</span>
+                            </div>
+                        </div>
+                        <div class="settings-grid">
+                            <div class="setting-item">
+                                <label class="setting-label">
+                                    <span>Lookback Penceresi (Geçmiş Veri)</span>
+                                    <span id="cfgLstmLookbackVal" style="color:var(--color-cyan); font-weight: 700;">60 Gün</span>
+                                </label>
+                                <input type="range" class="sim-slider" id="cfgLstmLookbackSlider" min="15" max="120" value="60" step="5">
+                                <span style="font-size: 0.72rem; color: var(--text-muted);">Modelin eğitiminde baz alınan geriye dönük bar sayısı.</span>
+                            </div>
+                            <div class="setting-item">
+                                <label class="setting-label">
+                                    <span>Tahmin Ufku (Forecast Horizon)</span>
+                                    <span id="cfgForecastHorizonVal" style="color:var(--color-cyan); font-weight: 700;">20 Gün</span>
+                                </label>
+                                <input type="range" class="sim-slider" id="cfgForecastHorizonSlider" min="5" max="60" value="20" step="5">
+                                <span style="font-size: 0.72rem; color: var(--text-muted);">İleriye dönük fiyat projeksiyon penceresi ($t+n$).</span>
+                            </div>
+                            <div class="setting-item">
+                                <label class="setting-label"><span>Güven Aralığı (Confidence Band)</span></label>
+                                <select class="setting-input" id="cfgTsConfidence">
+                                    <option value="0.90">%90 Güven Aralığı</option>
+                                    <option value="0.95" selected>%95 Güven Aralığı (Standart)</option>
+                                    <option value="0.99">%99 Güven Aralığı (Geniş Band)</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
+                                <label class="setting-label"><span>Eğitim Döngüsü (Epochs)</span></label>
+                                <input type="number" class="setting-input" id="cfgLstmEpochs" value="100" min="10" max="500" step="10">
+                            </div>
+                            <div class="setting-item">
+                                <label class="setting-label"><span>Öğrenme Oranı (Learning Rate)</span></label>
+                                <select class="setting-input" id="cfgLstmIr">
+                                    <option value="0.0001">0.0001 (Yavaş / Stabil)</option>
+                                    <option value="0.001" selected>0.001 (Önerilen Adam)</option>
+                                    <option value="0.01">0.01 (Hızlı)</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
+                                <label class="setting-label"><span>ARIMA Grid Search</span></label>
+                                <select class="setting-input" id="cfgArimaAuto">
+                                    <option value="true" selected>Otomatik AIC/BIC Minimizasyonu</option>
+                                    <option value="false">Manuel (p=1, d=1, q=1)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 2: Risk & VaR (Student's t Fat-Tail) -->
+                    <div class="settings-section-card glass" style="border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);">
+                        <div class="card-header" style="border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 12px;">
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i data-lucide="shield-alert" class="text-rose" style="width: 18px; height: 18px;"></i>
+                                    <h2 style="font-size: 1.05rem; font-weight: 600; margin: 0;">2. Risk & VaR Motoru (Fat-Tail)</h2>
+                                </div>
+                                <span class="text-muted" style="font-size: 0.75rem;">Basel III / Kurtosis</span>
+                            </div>
+                        </div>
+                        <div class="settings-grid">
+                            <div class="setting-item">
+                                <label class="setting-label">
+                                    <span>Student's t Serbestlik Derecesi (df)</span>
+                                    <span id="cfgStudentsDfVal" style="color:var(--color-rose); font-weight: 700;">5.0 (Ağır Kuyruk)</span>
+                                </label>
+                                <input type="range" class="sim-slider" id="cfgStudentsDfSlider" min="2.5" max="30.0" value="5.0" step="0.5">
+                                <span style="font-size: 0.72rem; color: var(--text-muted);">$df \rightarrow 3$: Ekstrem leptokurtik, $df \rightarrow 30$: Gauss normal dağılımı.</span>
+                            </div>
+                            <div class="setting-item">
+                                <label class="setting-label">
+                                    <span>Tarihsel Pencere (Risk Window)</span>
+                                    <span id="cfgRiskWindowVal" style="color:var(--color-rose); font-weight: 700;">252 Gün (1 Yıl)</span>
+                                </label>
+                                <input type="range" class="sim-slider" id="cfgRiskWindowSlider" min="60" max="504" value="252" step="21">
+                                <span style="font-size: 0.72rem; color: var(--text-muted);">Parametrik ve tarihsel VaR simülasyonu için baz alınan gün sayısı.</span>
+                            </div>
+                            <div class="setting-item">
+                                <label class="setting-label"><span>VaR Güven Düzeyi</span></label>
+                                <select class="setting-input" id="cfgVarConfidence">
+                                    <option value="0.95">%95 Güven Aralığı</option>
+                                    <option value="0.99" selected>%99 Güven Aralığı (Basel III)</option>
+                                    <option value="0.999">%99.9 Ekstrem Kuyruk</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
+                                <label class="setting-label"><span>Volatilite Modeli</span></label>
+                                <select class="setting-input" id="cfgVolModel">
+                                    <option value="garch" selected>GARCH(1,1) Bollerslev</option>
+                                    <option value="egarch">EGARCH (Asymmetric Nelson)</option>
+                                    <option value="ewma">EWMA (RiskMetrics)</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
+                                <label class="setting-label">
+                                    <span>EWMA Decay Factor (&lambda;)</span>
+                                    <span id="cfgLambdaVal" style="color:var(--color-rose); font-weight: 700;">0.94</span>
+                                </label>
+                                <input type="range" class="sim-slider" id="cfgLambdaSlider" min="0.80" max="0.99" value="0.94" step="0.01">
+                            </div>
+                            <div class="setting-item">
+                                <label class="setting-label"><span>Monte Carlo Patika Sayısı</span></label>
+                                <select class="setting-input" id="cfgMcPaths">
+                                    <option value="10000">10.000 İterasyon</option>
+                                    <option value="50000" selected>50.000 İterasyon</option>
+                                    <option value="100000">100.000 İterasyon</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 3: Event Study Bilanço Sürprizi -->
+                    <div class="settings-section-card glass" style="border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);">
+                        <div class="card-header" style="border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 12px;">
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i data-lucide="calendar" class="text-emerald" style="width: 18px; height: 18px;"></i>
+                                    <h2 style="font-size: 1.05rem; font-weight: 600; margin: 0;">3. Bilanço Olay Çalışması (Event Study)</h2>
+                                </div>
+                                <span class="text-muted" style="font-size: 0.75rem;">CAPM / CAR [-t, +t]</span>
+                            </div>
+                        </div>
+                        <div class="settings-grid">
+                            <div class="setting-item">
+                                <label class="setting-label">
+                                    <span>Tahmin Penceresi (Estimation Window)</span>
+                                    <span id="cfgEstWindowVal" style="color:var(--color-emerald); font-weight: 700;">100 Gün [-120, -21]</span>
+                                </label>
+                                <input type="range" class="sim-slider" id="cfgEstWindowSlider" min="40" max="180" value="100" step="10">
+                                <span style="font-size: 0.72rem; color: var(--text-muted);">Piyasa modeli CAPM OLS ($\alpha, \beta$) kalibrasyon penceresi.</span>
+                            </div>
+                            <div class="setting-item">
+                                <label class="setting-label">
+                                    <span>Olay Penceresi Yarı Genişliği ([-t, +t])</span>
+                                    <span id="cfgEventHalfVal" style="color:var(--color-emerald); font-weight: 700;">[-5, +5] Gün</span>
+                                </label>
+                                <input type="range" class="sim-slider" id="cfgEventHalfSlider" min="2" max="10" value="5" step="1">
+                                <span style="font-size: 0.72rem; color: var(--text-muted);">Bilanço açıklanma günü ($t_0$) çevresindeki Kümülatif Anormal Getiri (CAR) aralığı.</span>
+                            </div>
+                            <div class="setting-item">
+                                <label class="setting-label"><span>Benchmark Piyasa Endeksi</span></label>
+                                <select class="setting-input" id="cfgBenchmark">
+                                    <option value="XU100" selected>BIST 100 Endeksi (XU100)</option>
+                                    <option value="XU030">BIST 30 Endeksi (XU030)</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
+                                <label class="setting-label"><span>Minimum Gözlem Filtresi (Min Obs)</span></label>
+                                <select class="setting-input" id="cfgCapmMinObs">
+                                    <option value="40">40 İşlem Günü</option>
+                                    <option value="60" selected>60 İşlem Günü (Önerilen)</option>
+                                    <option value="80">80 İşlem Günü</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 4: Multi-Factor Regression & VIF -->
+                    <div class="settings-section-card glass" style="border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);">
+                        <div class="card-header" style="border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 12px;">
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i data-lucide="git-merge" class="text-indigo" style="width: 18px; height: 18px;"></i>
+                                    <h2 style="font-size: 1.05rem; font-weight: 600; margin: 0;">4. Çok Faktörlü Panel Regresyon (VIF)</h2>
+                                </div>
+                                <span class="text-muted" style="font-size: 0.75rem;">Statsmodels / HAC</span>
+                            </div>
+                        </div>
+                        <div class="settings-grid">
+                            <div class="setting-item">
+                                <label class="setting-label">
+                                    <span>VIF Çoklu Doğrusallık Eşiği</span>
+                                    <span id="cfgVifVal" style="color:#818cf8; font-weight: 700;">5.0</span>
+                                </label>
+                                <input type="range" class="sim-slider" id="cfgVifSlider" min="2.0" max="10.0" value="5.0" step="0.5">
+                                <span style="font-size: 0.72rem; color: var(--text-muted);">$VIF > \text{Eşik}$ olan bağımsız değişkenler modelden elenir.</span>
+                            </div>
+                            <div class="setting-item">
+                                <label class="setting-label"><span>Anlamlılık Düzeyi (&alpha;)</span></label>
+                                <select class="setting-input" id="cfgSignificanceAlpha">
+                                    <option value="0.01">&alpha; = 0.01 (%99 Güven / Katı)</option>
+                                    <option value="0.05" selected>&alpha; = 0.05 (%95 Güven / Tavsiye)</option>
+                                    <option value="0.10">&alpha; = 0.10 (%90 Güven)</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
+                                <label class="setting-label"><span>Standart Hata Düzeltmesi (Kovaryans)</span></label>
+                                <select class="setting-input" id="cfgHacErrors">
+                                    <option value="newey-west" selected>Newey-West HAC (Otokorelasyon & Heteroskedastisite)</option>
+                                    <option value="white">White Heteroskedasticity (HC1)</option>
+                                    <option value="ols">Standart OLS Homoskedastik</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
+                                <label class="setting-label"><span>Aktif BIST Risk Faktörleri</span></label>
+                                <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px;">
+                                    <label style="display: flex; align-items: center; gap: 5px; font-size: 0.8rem; cursor: pointer; background: rgba(255,255,255,0.03); padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.08);">
+                                        <input type="checkbox" checked id="fMkt"> MKT
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 5px; font-size: 0.8rem; cursor: pointer; background: rgba(255,255,255,0.03); padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.08);">
+                                        <input type="checkbox" checked id="fSmb"> SMB
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 5px; font-size: 0.8rem; cursor: pointer; background: rgba(255,255,255,0.03); padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.08);">
+                                        <input type="checkbox" checked id="fHml"> HML
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 5px; font-size: 0.8rem; cursor: pointer; background: rgba(255,255,255,0.03); padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.08);">
+                                        <input type="checkbox" checked id="fMom"> MOM
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 5px; font-size: 0.8rem; cursor: pointer; background: rgba(255,255,255,0.03); padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.08);">
+                                        <input type="checkbox" checked id="fUsd"> USD/TRY
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 5px; font-size: 0.8rem; cursor: pointer; background: rgba(255,255,255,0.03); padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.08);">
+                                        <input type="checkbox" checked id="fIr"> FAİZ
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 5: Data Pipeline, FastAPI & Persistence Engine -->
+                    <div class="settings-section-card glass" style="grid-column: 1 / -1; border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);">
+                        <div class="card-header" style="border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 12px;">
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i data-lucide="database" class="text-amber" style="width: 18px; height: 18px;"></i>
+                                    <h2 style="font-size: 1.05rem; font-weight: 600; margin: 0;">5. Çift Yönlü Kalıcılık (Persistence) & FastAPI Entegrasyonu</h2>
+                                </div>
+                                <span class="badge badge-amber" style="font-size: 0.72rem; padding: 2px 8px;">SQLite + LocalStorage Çift Katman</span>
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+                            <div class="setting-item">
+                                <label class="setting-label"><span>FastAPI Backend URL</span></label>
+                                <input type="text" class="setting-input" id="cfgApiUrl" value="http://localhost:8000">
+                                <span style="font-size: 0.72rem; color: var(--text-muted);">Python kantitatif servis uç noktası.</span>
+                            </div>
+                            <div class="setting-item">
+                                <label class="setting-label"><span>WebSocket Stream URI</span></label>
+                                <input type="text" class="setting-input" id="cfgWsUrl" value="ws://localhost:8000/stream/quantflux">
+                                <span style="font-size: 0.72rem; color: var(--text-muted);">Canlı BIST fiyat ve log veri akışı soketi.</span>
+                            </div>
+                            <div class="setting-item">
+                                <label class="setting-label"><span>Veritabanı Kalıcılık Tablosu</span></label>
+                                <div style="padding: 10px; background: rgba(0,0,0,0.3); border-radius: 6px; border: 1px solid rgba(255,255,255,0.08); font-size: 0.8rem; font-family: var(--font-mono);">
+                                    <div style="color: var(--color-emerald); display: flex; align-items: center; gap: 6px;">
+                                        <i data-lucide="check-circle" style="width: 14px; height: 14px;"></i> sqlite:///quantflux.db &rarr; model_configs
+                                    </div>
+                                    <div style="color: var(--text-muted); font-size: 0.72rem; margin-top: 4px;">
+                                        Tüm sekmeler bu konfigürasyondan dinamik beslenir.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="setting-item" style="display: flex; justify-content: flex-end; align-items: flex-end;">
+                                <button class="btn btn-secondary" id="testApiBtn" style="width: 100%; height: 38px; border: 1px solid rgba(0, 242, 254, 0.3); background: rgba(0, 242, 254, 0.05); color: var(--color-cyan);">
+                                    <i data-lucide="wifi" style="width: 14px; margin-right: 6px;"></i> <span data-i18n="settings_btn_test">FastAPI Bağlantısını Test Et & Doğrula</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- ==========================================
+         QuantFlux Signal Report & Scorecard Modal
+         ========================================== -->
+    <div id="quantfluxSignalReportModal" class="modal-backdrop">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 36px; height: 36px; border-radius: 8px; background: linear-gradient(135deg, #00F2FE 0%, #10B981 100%); display: flex; align-items: center; justify-content: center; color: #070b12;">
+                        <i data-lucide="zap" style="width: 20px; height: 20px;"></i>
+                    </div>
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <h3 style="font-size: 1.15rem; font-weight: 700; margin: 0; color: #ffffff;" id="reportModalTitle">QuantFlux Sinyal Raporu & Yatırımcı Karnesi</h3>
+                            <span class="badge badge-cyan" id="reportTickerBadge">THYAO</span>
+                        </div>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin: 2px 0 0 0;" id="reportTimestamp">QuantFlux v3.2 Algorithmic Risk Engine • Otomatik Analiz</p>
+                    </div>
+                </div>
+                <button id="closeReportModalBtn" class="icon-btn" style="width: 32px; height: 32px;">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <!-- Summary Consensus Banner -->
+                <div style="padding: 16px 20px; border-radius: 12px; background: linear-gradient(135deg, rgba(0, 242, 254, 0.08) 0%, rgba(16, 185, 129, 0.08) 100%); border: 1px solid rgba(0, 242, 254, 0.25); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); display: block;">Genel Kantitatif Konsensüs</span>
+                        <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
+                            <span id="reportConsensusBadge" style="font-size: 1.25rem; font-weight: 800; color: #10B981; text-shadow: 0 0 20px rgba(16,185,129,0.4);">GÜÇLÜ AL (STRONG BUY)</span>
+                            <span id="reportConsensusScore" style="padding: 3px 10px; border-radius: 999px; background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); color: #10B981; font-weight: 700; font-size: 0.85rem;">Skor: 8.8 / 10</span>
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <span style="font-size: 0.72rem; color: var(--text-muted); display: block;">Referans Fiyat / Piyasa Değeri</span>
+                        <span id="reportPriceMeta" style="font-size: 1.1rem; font-weight: 700; font-family: var(--font-mono); color: #ffffff;">₺314.50 • ₺434.0 Mrd</span>
+                    </div>
+                </div>
+
+                <!-- 4 Core Scorecards Grid -->
+                <div class="scorecard-grid">
+                    <!-- Card 1: Temel Analiz Skoru (Piotroski & Altman Z) -->
+                    <div class="scorecard-item">
+                        <div class="scorecard-title">
+                            <i data-lucide="award" class="text-emerald" style="width: 16px;"></i>
+                            <span>1. Temel Analiz & Bilanço Sağlığı</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                            <div>
+                                <span style="font-size: 0.7rem; color: var(--text-muted);">Piotroski F-Score</span>
+                                <div class="scorecard-val text-emerald" id="reportPiotroskiVal">8 / 9</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <span style="font-size: 0.7rem; color: var(--text-muted);">Altman Z''-Score</span>
+                                <div class="scorecard-val text-cyan" id="reportAltmanVal">4.82</div>
+                            </div>
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary); border-top: 1px solid rgba(255,255,255,0.06); padding-top: 8px;" id="reportFundamentalDesc">
+                            Kârlılık ve operasyonel nakit akışı mükemmel seviyede. İflas/temerrüt riski güvenli bölgede (Z &gt; 2.6).
+                        </div>
+                    </div>
+
+                    <!-- Card 2: LSTM Trend & Projeksiyon -->
+                    <div class="scorecard-item">
+                        <div class="scorecard-title">
+                            <i data-lucide="line-chart" class="text-cyan" style="width: 16px;"></i>
+                            <span>2. LSTM Gelecek Trend Tahmini</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                            <div>
+                                <span style="font-size: 0.7rem; color: var(--text-muted);">20-Gün Fiyat Projeksiyonu</span>
+                                <div class="scorecard-val text-cyan" id="reportLstmTargetVal">₺342.50 (+%8.9)</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <span style="font-size: 0.7rem; color: var(--text-muted);">Model Güveni</span>
+                                <div style="font-size: 0.95rem; font-weight: 700; color: #ffffff;" id="reportLstmBandVal">%95 Güven Aralığı</div>
+                            </div>
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary); border-top: 1px solid rgba(255,255,255,0.06); padding-top: 8px;" id="reportLstmDesc">
+                            PyTorch sequential LSTM modeli pozitif momentum ivmelenmesi tespit etti. Beklenen volatilite bandı [₺328 - ₺357].
+                        </div>
+                    </div>
+
+                    <!-- Card 3: Event Study Reaksiyon Geçmişi -->
+                    <div class="scorecard-item">
+                        <div class="scorecard-title">
+                            <i data-lucide="calendar" class="text-amber" style="width: 16px;"></i>
+                            <span>3. Bilanço Reaksiyonu & Sürpriz (Event Study)</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                            <div>
+                                <span style="font-size: 0.7rem; color: var(--text-muted);">Standardized Sürpriz (SUE)</span>
+                                <div class="scorecard-val text-emerald" id="reportSueVal">+2.18 σ</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <span style="font-size: 0.7rem; color: var(--text-muted);">Kümülatif Anormal Getiri (CAR)</span>
+                                <div class="scorecard-val text-amber" id="reportCarVal">+%4.80</div>
+                            </div>
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary); border-top: 1px solid rgba(255,255,255,0.06); padding-top: 8px;" id="reportEventDesc">
+                            Son 4 çeyreğin 3'ünde piyasa beklentisinin üzerinde gerçekleşme. Post-Earnings Announcement Drift (PEAD) pozitif.
+                        </div>
+                    </div>
+
+                    <!-- Card 4: Piyasa Riski & VaR Seviyesi -->
+                    <div class="scorecard-item">
+                        <div class="scorecard-title">
+                            <i data-lucide="shield-alert" class="text-rose" style="width: 16px;"></i>
+                            <span>4. Piyasa Riski & VaR Seviyesi</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                            <div>
+                                <span style="font-size: 0.7rem; color: var(--text-muted);">Günlük %99 Parametrik VaR</span>
+                                <div class="scorecard-val text-rose" id="reportVarVal">₺14.15 (%4.50)</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <span style="font-size: 0.7rem; color: var(--text-muted);">Stres Testi Dayanıklılığı</span>
+                                <div class="scorecard-val text-emerald" id="reportStressScore">A+ (Döviz Pozitif)</div>
+                            </div>
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary); border-top: 1px solid rgba(255,255,255,0.06); padding-top: 8px;" id="reportRiskDesc">
+                            Student's t ağır kuyruk koruması devrede. Döviz kur şokuna karşı pozitif kambiyo tamponu riski dengeliyor.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Key Financial Table -->
+                <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; overflow: hidden;">
+                    <div style="padding: 10px 16px; background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 0.8rem; font-weight: 600; display: flex; justify-content: space-between;">
+                        <span>Kritik Çarpanlar ve Bilanço Göstergeleri</span>
+                        <span style="color: var(--color-cyan); font-family: var(--font-mono);">Point-in-Time (KAP Doğrulamalı)</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; padding: 14px 16px;" id="reportMultipliersRow">
+                        <div><span style="color:var(--text-muted); font-size:0.7rem;">F/K (Fiyat/Kazanç):</span> <strong style="display:block; font-family:var(--font-mono);" id="repPk">2.66x</strong></div>
+                        <div><span style="color:var(--text-muted); font-size:0.7rem;">PD/DD:</span> <strong style="display:block; font-family:var(--font-mono);" id="repPddd">0.69x</strong></div>
+                        <div><span style="color:var(--text-muted); font-size:0.7rem;">FD/FAVÖK:</span> <strong style="display:block; font-family:var(--font-mono);" id="repFdFavok">3.12x</strong></div>
+                        <div><span style="color:var(--text-muted); font-size:0.7rem;">ROE (Özkaynak Kârlılığı):</span> <strong style="display:block; font-family:var(--font-mono); color:var(--color-emerald);" id="repRoe">%28.4</strong></div>
+                        <div><span style="color:var(--text-muted); font-size:0.7rem;">Cari Oran:</span> <strong style="display:block; font-family:var(--font-mono);" id="repCari">0.94x</strong></div>
+                        <div><span style="color:var(--text-muted); font-size:0.7rem;">Jensen's Alpha:</span> <strong style="display:block; font-family:var(--font-mono); color:var(--color-cyan);" id="repAlpha">+%2.40</strong></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <div style="font-size: 0.72rem; color: var(--text-muted);">
+                    <i data-lucide="shield-check" style="width: 13px; display: inline; vertical-align: middle; color: var(--color-emerald);"></i> QuantFlux Denetimli Algoritmik Çıktı
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-secondary" id="downloadReportJsonBtn">
+                        <i data-lucide="download" style="width: 14px; margin-right: 6px;"></i> JSON / Rapor İndir
+                    </button>
+                    <button class="btn btn-primary" id="printReportPdfBtn" style="background: linear-gradient(135deg, #00F2FE 0%, #10B981 100%); color: #070b12; font-weight: 700;">
+                        <i data-lucide="printer" style="width: 14px; margin-right: 6px;"></i> PDF / Yazdır
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Toast Notification Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Embedded Quant AI Assistant Widget -->
+    <div id="ai-widget-container">
+        <button id="ai-launcher" class="ai-launcher">
+            <i data-lucide="terminal" class="ai-launcher-icon"></i>
+            <span class="ai-status-badge" data-i18n="ai_status">Copilot Online</span>
+        </button>
+
+        <div id="ai-chat-window" class="ai-chat-window glass">
+            <div class="ai-chat-header">
+                <div class="ai-chat-profile">
+                    <img src="https://ui-avatars.com/api/?name=Quant+Flux&background=09090b&color=10b981" alt="AI Avatar">
+                    <div>
+                        <h4 style="font-size: 0.9rem; font-weight: 600;" data-i18n="ai_title">QuantFlux AI</h4>
+                        <span style="font-size: 0.7rem; color: var(--color-emerald);" data-i18n="ai_role">Finansal Stratejist & Kantitatif Copilot</span>
+                    </div>
+                </div>
+                <button id="ai-close-btn" class="icon-btn" style="width: 32px; height: 32px;"><i data-lucide="x"></i></button>
+            </div>
+            
+            <div class="ai-quick-actions">
+                <button class="ai-pill" data-i18n="ai_pill1">THYAO bilançosunu özetle</button>
+                <button class="ai-pill" data-i18n="ai_pill2">Duran Varlıkların aktifteki yeri nedir?</button>
+                <button class="ai-pill" data-i18n="ai_pill3">Satış ve kârlılık durumunu yorumla</button>
+            </div>
+
+            <div id="ai-chat-stream" class="ai-chat-stream">
+                <div class="ai-message ai-system">
+                    Merhaba! Ben QuantFlux analitik motorunun yapay zeka asistanıyım. Yüklediğiniz finansal tablo ve bilanço verilerinin risk, volatilite ve projeksiyon dinamiklerini birlikte inceleyebiliriz.
+                </div>
+            </div>
+
+            <div class="ai-chat-input-area">
+                <input type="text" id="ai-chat-input" placeholder="Kantitatif bir soru sorun..." data-i18n="ai_placeholder">
+                <button id="ai-chat-send"><i data-lucide="send"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/i18n.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

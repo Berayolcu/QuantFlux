@@ -1,0 +1,39 @@
+# Python & Sanal Ortam
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Veritabanı & Çalışma Dosyaları (Local DB depoya atılmaz)
+*.db
+*.sqlite
+*.sqlite3
+quantflux.db
+
+# Loglar ve Geçici Dosyalar
+*.log
+task-*.log
+
+# Ortam Değişkenleri & Gizli Anahtarlar
+.env
+.env.local
+.env.*.local
+
+# Node / Frontend (Next.js & Bağımlılıklar)
+node_modules/
+.next/
+out/
+build/
+dist/
+.npm
+
+# İşletim Sistemi (macOS / IDE)
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.vscode/
+.idea/
