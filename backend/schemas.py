@@ -8,10 +8,10 @@ from typing import Optional, List, Dict, Any
 from datetime import date, datetime
 
 class FinancialStatementBase(BaseModel):
-    ticker: str = Field(..., example="THYAO", description="Hisse senedi sembolü")
-    period: str = Field(..., example="2023/12", description="Bilanço çeyrek dönemi (YYYY/MM)")
-    period_end_date: date = Field(..., example="2023-12-31", description="Dönem kapanış tarihi")
-    disclosure_date: datetime = Field(..., example="2024-03-08T18:45:00", description="KAP ilan tarihi ve saati")
+    ticker: str = Field(..., examples=["THYAO"], description="Hisse senedi sembolü")
+    period: str = Field(..., examples=["2023/12"], description="Bilanço çeyrek dönemi (YYYY/MM)")
+    period_end_date: date = Field(..., examples=["2023-12-31"], description="Dönem kapanış tarihi")
+    disclosure_date: datetime = Field(..., examples=["2024-03-08T18:45:00"], description="KAP ilan tarihi ve saati")
 
     donen_varliklar: float = Field(..., ge=0, description="Dönen Varlıklar (TL)")
     duran_varliklar: float = Field(..., ge=0, description="Duran Varlıklar (TL)")
@@ -74,5 +74,5 @@ class CSVUploadResult(BaseModel):
 
 
 class PointInTimeQuery(BaseModel):
-    ticker: str = Field(..., example="THYAO")
-    as_of_date: date = Field(..., example="2024-04-15", description="Stratejinin işlem yaptığı an (Point-in-Time)")
+    ticker: str = Field(..., examples=["THYAO"])
+    as_of_date: date = Field(..., examples=["2024-04-15"], description="Stratejinin işlem yaptığı an (Point-in-Time)")

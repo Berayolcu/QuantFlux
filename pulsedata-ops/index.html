@@ -1176,7 +1176,7 @@
                     </div>
                     <div class="table-responsive">
                         <table class="data-table">
-                            <thead>
+                            <thead id="fundFinancialsTableHead">
                                 <tr>
                                     <th>Finansal Kalem (₺ Milyar)</th>
                                     <th style="text-align: right;">2026/06 (Son)</th>
@@ -2216,12 +2216,12 @@
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
                             <div class="setting-item">
                                 <label class="setting-label"><span>FastAPI Backend URL</span></label>
-                                <input type="text" class="setting-input" id="cfgApiUrl" value="http://localhost:8000">
+                                <input type="text" class="setting-input" id="cfgApiUrl" value="http://localhost:8080">
                                 <span style="font-size: 0.72rem; color: var(--text-muted);">Python kantitatif servis uç noktası.</span>
                             </div>
                             <div class="setting-item">
                                 <label class="setting-label"><span>WebSocket Stream URI</span></label>
-                                <input type="text" class="setting-input" id="cfgWsUrl" value="ws://localhost:8000/stream/quantflux">
+                                <input type="text" class="setting-input" id="cfgWsUrl" value="ws://localhost:8080/stream/quantflux">
                                 <span style="font-size: 0.72rem; color: var(--text-muted);">Canlı BIST fiyat ve log veri akışı soketi.</span>
                             </div>
                             <div class="setting-item">

@@ -147,8 +147,8 @@ def get_financial_statements(ticker: str, db: Session = Depends(get_db)):
 
 @router.get("/point-in-time", summary="Point-in-Time Bilanço Sorgusu (Look-Ahead Bias Önleme)")
 def get_point_in_time_financials(
-    ticker: str = Query(..., example="THYAO"),
-    as_of_date: date = Query(..., example="2024-04-15", description="Stratejinin çalıştığı an"),
+    ticker: str = Query(..., examples=["THYAO"]),
+    as_of_date: date = Query(..., examples=["2024-04-15"], description="Stratejinin çalıştığı an"),
     db: Session = Depends(get_db)
 ):
     """

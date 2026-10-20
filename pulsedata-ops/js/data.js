@@ -1,5 +1,244 @@
 // QuantFlux Quantitative Data Layer (v3.2)
-// Generated from Official BIST Financial Disclosures (.xls)
+// Universal Generic Financial Data Architecture
+
+/**
+ * Universal Period Sort Key Parser
+ * Converts "2026/06", "2025/12", "2024-09", "2024Q1" into comparable integers (e.g. 202606)
+ */
+function parsePeriodSortKey(periodStr) {
+    if (!periodStr) return 0;
+    const str = String(periodStr).trim();
+    const m = str.match(/(\d{4})[^\d]?(\d{1,2})?/);
+    if (!m) return 0;
+    const y = parseInt(m[1], 10);
+    const qOrM = m[2] ? parseInt(m[2], 10) : 12;
+    return y * 100 + qOrM;
+}
+
+/**
+ * Derives standard quarter-end and disclosure dates from period string
+ */
+function deriveDatesFromPeriod(periodStr) {
+    const str = String(periodStr || '2026/06').trim();
+    const m = str.match(/(\d{4})[^\d]?(\d{1,2})?/);
+    const year = m ? parseInt(m[1], 10) : 2026;
+    const month = m && m[2] ? parseInt(m[2], 10) : 6;
+    if (month <= 3) {
+        return { end: `${year}-03-31`, disc: `${year}-05-10` };
+    } else if (month <= 6) {
+        return { end: `${year}-06-30`, disc: `${year}-08-14` };
+    } else if (month <= 9) {
+        return { end: `${year}-09-30`, disc: `${year}-11-08` };
+    } else {
+        return { end: `${year}-12-31`, disc: `${year + 1}-03-04` };
+    }
+}
+
+/**
+ * Universal Company Data Normalizer
+ * Enforces strictly descending period order (statements[0] = newest quarter)
+ * and conforms to the Universal Data Contract.
+ */
+function normalizeCompanyData(raw) {
+    if (!raw) return null;
+    const ticker = String(raw.ticker || raw.symbol || raw.sembol || 'GENERIC').toUpperCase();
+    const name = raw.name || raw.company_name || `${ticker} A.Ş.`;
+    const sector = raw.sector || raw.sektor || 'BIST Genel';
+    const bist = raw.bist || 'BIST 100';
+    const price = typeof raw.price === 'number' ? raw.price : (parseFloat(raw.price) || 100.0);
+    const shares = typeof raw.shares === 'number' ? raw.shares : (parseFloat(raw.shares) || 1000000000);
+
+    const rawStmts = Array.isArray(raw.statements) ? raw.statements :
+                     (Array.isArray(raw.data) ? raw.data :
+                     (Array.isArray(raw.records) ? raw.records : []));
+
+    const stmts = rawStmts.map((s, idx) => {
+        const period = String(s.period || `Dönem ${idx + 1}`).trim();
+        const dates = deriveDatesFromPeriod(period);
+        const period_end_date = s.period_end_date ? String(s.period_end_date).slice(0, 10) : dates.end;
+        const disclosure_date = s.disclosure_date ? String(s.disclosure_date).slice(0, 19) : dates.disc;
+
+        const ca = typeof s.donen_varliklar === 'number' ? s.donen_varliklar : (typeof s.currentAssets === 'number' ? s.currentAssets : (parseFloat(s.donen_varliklar || s.currentAssets) || 0));
+        const fa = typeof s.duran_varliklar === 'number' ? s.duran_varliklar : (typeof s.fixedAssets === 'number' ? s.fixedAssets : (parseFloat(s.duran_varliklar || s.fixedAssets) || 0));
+        let ta = typeof s.toplam_varliklar === 'number' ? s.toplam_varliklar : (typeof s.totalAssets === 'number' ? s.totalAssets : (parseFloat(s.toplam_varliklar || s.totalAssets) || 0));
+        if (!ta || ta === 0) ta = ca + fa;
+
+        const stl = typeof s.kisa_vadeli_yuk === 'number' ? s.kisa_vadeli_yuk : (typeof s.shortTermLiab === 'number' ? s.shortTermLiab : (parseFloat(s.kisa_vadeli_yuk || s.shortTermLiab) || 0));
+        const ltl = typeof s.uzun_vadeli_yuk === 'number' ? s.uzun_vadeli_yuk : (typeof s.longTermLiab === 'number' ? s.longTermLiab : (parseFloat(s.uzun_vadeli_yuk || s.longTermLiab) || 0));
+        let totalLiab = typeof s.totalLiab === 'number' ? s.totalLiab : (typeof s.toplam_yukumlulukler === 'number' ? s.toplam_yukumlulukler : (parseFloat(s.totalLiab || s.toplam_yukumlulukler) || 0));
+        if (!totalLiab || totalLiab === 0) totalLiab = stl + ltl;
+
+        const eq = typeof s.ozkaynaklar === 'number' ? s.ozkaynaklar : (typeof s.equity === 'number' ? s.equity : (parseFloat(s.ozkaynaklar || s.equity) || 0));
+        const rev = typeof s.net_satislar === 'number' ? s.net_satislar : (typeof s.revenue === 'number' ? s.revenue : (parseFloat(s.net_satislar || s.revenue) || 0));
+        const ni = typeof s.net_kar === 'number' ? s.net_kar : (typeof s.netIncome === 'number' ? s.netIncome : (parseFloat(s.net_kar || s.netIncome) || 0));
+
+        let ebitda = typeof s.favok === 'number' ? s.favok : (typeof s.ebitda === 'number' ? s.ebitda : (parseFloat(s.favok || s.ebitda) || 0));
+        if (!ebitda || ebitda === 0) {
+            ebitda = ni !== 0 ? Math.round(ni * 1.25) : Math.round(rev * 0.20);
+        }
+
+        const costOfSales = typeof s.costOfSales === 'number' ? s.costOfSales : (typeof s.satislarin_maliyeti === 'number' ? s.satislarin_maliyeti : (parseFloat(s.costOfSales || s.satislarin_maliyeti) || (rev > 0 ? -Math.round(rev * 0.75) : 0)));
+        const grossProfit = typeof s.grossProfit === 'number' ? s.grossProfit : (typeof s.brut_kar === 'number' ? s.brut_kar : (parseFloat(s.grossProfit || s.brut_kar) || (rev > 0 ? Math.round(rev * 0.25) : 0)));
+        const operatingProfit = typeof s.operatingProfit === 'number' ? s.operatingProfit : (typeof s.esas_faaliyet_kari === 'number' ? s.esas_faaliyet_kari : (parseFloat(s.operatingProfit || s.esas_faaliyet_kari) || (ebitda > 0 ? Math.round(ebitda * 0.8) : ni)));
+
+        const cr = stl > 0 ? +(ca / stl).toFixed(2) : (s.currentRatio ? +parseFloat(s.currentRatio).toFixed(2) : 1.0);
+        const de = eq > 0 ? +(totalLiab / eq).toFixed(2) : (s.debtToEquity ? +parseFloat(s.debtToEquity).toFixed(2) : 1.0);
+        const lev = ta > 0 ? +((totalLiab / ta) * 100).toFixed(1) : (s.leverage ? +parseFloat(s.leverage).toFixed(1) : 50.0);
+        const nm = rev > 0 ? +((ni / rev) * 100).toFixed(1) : (s.netMargin ? +parseFloat(s.netMargin).toFixed(1) : 10.0);
+        const gm = rev > 0 ? +((grossProfit / rev) * 100).toFixed(1) : (s.grossMargin ? +parseFloat(s.grossMargin).toFixed(1) : 20.0);
+        const roe = eq > 0 ? +((ni / eq) * 100).toFixed(1) : (s.roe ? +parseFloat(s.roe).toFixed(1) : 15.0);
+        const roa = ta > 0 ? +((ni / ta) * 100).toFixed(1) : (s.roa ? +parseFloat(s.roa).toFixed(1) : 7.0);
+
+        const mCap = price * shares;
+        const pe = ni > 0 ? +(mCap / ni).toFixed(2) : (s.pe ? +parseFloat(s.pe).toFixed(2) : 5.0);
+        const pb = eq > 0 ? +(mCap / eq).toFixed(2) : (s.pb ? +parseFloat(s.pb).toFixed(2) : 1.0);
+        const netDebt = Math.max(0, totalLiab - ca * 0.35);
+        const ev = mCap + netDebt;
+        const evEbitda = ebitda > 0 ? +(ev / ebitda).toFixed(2) : (s.evEbitda ? +parseFloat(s.evEbitda).toFixed(2) : 6.0);
+        const eps = shares > 0 ? +(ni / shares).toFixed(2) : (s.eps ? +parseFloat(s.eps).toFixed(2) : 10.0);
+
+        return {
+            period,
+            period_end_date,
+            disclosure_date,
+            donen_varliklar: ca,
+            duran_varliklar: fa,
+            toplam_varliklar: ta,
+            kisa_vadeli_yuk: stl,
+            uzun_vadeli_yuk: ltl,
+            totalLiab,
+            ozkaynaklar: eq,
+            net_satislar: rev,
+            favok: ebitda,
+            net_kar: ni,
+            costOfSales,
+            grossProfit,
+            operatingProfit,
+            // CamelCase aliases:
+            currentAssets: ca,
+            fixedAssets: fa,
+            totalAssets: ta,
+            shortTermLiab: stl,
+            longTermLiab: ltl,
+            equity: eq,
+            revenue: rev,
+            ebitda,
+            netIncome: ni,
+            currentRatio: cr,
+            debtToEquity: de,
+            leverage: lev,
+            netMargin: nm,
+            grossMargin: gm,
+            roe,
+            roa,
+            marketCap: mCap,
+            pe,
+            pb,
+            evEbitda,
+            eps
+        };
+    });
+
+    // STRICT AUTO-SORT: Descending order (statements[0] is latest quarter)
+    stmts.sort((a, b) => parsePeriodSortKey(b.period) - parsePeriodSortKey(a.period));
+
+    const periods = stmts.map(s => s.period);
+
+    return {
+        ticker,
+        name,
+        sector,
+        bist,
+        price,
+        shares,
+        periods,
+        statements: stmts,
+        data: stmts // Alias for backward compatibility
+    };
+}
+
+/**
+ * Universal Mock Generator for any custom or missing company
+ */
+function generateGenericCompanyData(ticker, name, sector) {
+    const t = String(ticker || 'CUSTOM').toUpperCase();
+    const n = name || `${t} Sanayi ve Ticaret A.Ş.`;
+    const s = sector || 'BIST İmalat / Genel';
+    const price = 85.50;
+    const shares = 1200000000;
+    const rawStatements = [
+        {
+            period: '2026/06',
+            period_end_date: '2026-06-30',
+            disclosure_date: '2026-08-14 18:30:00',
+            donen_varliklar: 245000000000.0,
+            duran_varliklar: 380000000000.0,
+            toplam_varliklar: 625000000000.0,
+            kisa_vadeli_yuk: 210000000000.0,
+            uzun_vadeli_yuk: 165000000000.0,
+            ozkaynaklar: 250000000000.0,
+            net_satislar: 290000000000.0,
+            favok: 62000000000.0,
+            net_kar: 38500000000.0
+        },
+        {
+            period: '2025/12',
+            period_end_date: '2025-12-31',
+            disclosure_date: '2026-03-02 18:45:00',
+            donen_varliklar: 215000000000.0,
+            duran_varliklar: 330000000000.0,
+            toplam_varliklar: 545000000000.0,
+            kisa_vadeli_yuk: 185000000000.0,
+            uzun_vadeli_yuk: 145000000000.0,
+            ozkaynaklar: 215000000000.0,
+            net_satislar: 480000000000.0,
+            favok: 98000000000.0,
+            net_kar: 54000000000.0
+        },
+        {
+            period: '2024/12',
+            period_end_date: '2024-12-31',
+            disclosure_date: '2025-03-04 18:40:00',
+            donen_varliklar: 170000000000.0,
+            duran_varliklar: 260000000000.0,
+            toplam_varliklar: 430000000000.0,
+            kisa_vadeli_yuk: 150000000000.0,
+            uzun_vadeli_yuk: 110000000000.0,
+            ozkaynaklar: 170000000000.0,
+            net_satislar: 360000000000.0,
+            favok: 72000000000.0,
+            net_kar: 41000000000.0
+        },
+        {
+            period: '2023/12',
+            period_end_date: '2023-12-31',
+            disclosure_date: '2024-03-05 18:45:00',
+            donen_varliklar: 125000000000.0,
+            duran_varliklar: 195000000000.0,
+            toplam_varliklar: 320000000000.0,
+            kisa_vadeli_yuk: 115000000000.0,
+            uzun_vadeli_yuk: 85000000000.0,
+            ozkaynaklar: 120000000000.0,
+            net_satislar: 250000000000.0,
+            favok: 51000000000.0,
+            net_kar: 29000000000.0
+        }
+    ];
+
+    return normalizeCompanyData({
+        ticker: t,
+        name: n,
+        sector: s,
+        bist: 'BIST 100',
+        price,
+        shares,
+        statements: rawStatements
+    });
+}
+
+window.parsePeriodSortKey = parsePeriodSortKey;
+window.normalizeCompanyData = normalizeCompanyData;
+window.generateGenericCompanyData = generateGenericCompanyData;
 
 window.QuantData = {
     activeTicker: "THYAO",
@@ -1730,56 +1969,69 @@ window.QuantData = {
     "eps": 13.6
   }
 ],
-    baseNetIncome: 162998000000.0,
-    baseEquity: 457112000000.0,
-    baseTotalAssets: 1050091000000.0,
-    baseEbitda: 89281250000.0,
+    baseNetIncome: 18766000000.0,
+    baseEquity: 1018453000000.0,
+    baseTotalAssets: 2360037000000.0,
+    baseEbitda: 25334100000.0,
     getActiveCompany: function() {
-        return this.companies[this.activeTicker] || this.companies["THYAO"];
+        if (!this.companies[this.activeTicker]) {
+            this.companies[this.activeTicker] = window.generateGenericCompanyData(this.activeTicker);
+        }
+        return this.companies[this.activeTicker];
     },
     setActiveTicker: function(ticker) {
-        if (this.companies[ticker]) {
-            this.activeTicker = ticker;
-            this.assets = this.companies[ticker].data;
-            const latest = this.assets[0];
-            this.baseNetIncome = latest.netIncome;
-            this.baseEquity = latest.equity;
-            this.baseTotalAssets = latest.totalAssets;
-            this.baseEbitda = latest.ebitda;
-            return true;
+        if (!ticker) return false;
+        const t = String(ticker).toUpperCase();
+        if (!this.companies[t]) {
+            this.companies[t] = window.generateGenericCompanyData(t);
         }
-        return false;
+        this.activeTicker = t;
+        const company = this.companies[t];
+        this.assets = company.statements || company.data;
+        const latest = this.assets[0];
+        if (latest) {
+            this.baseNetIncome = latest.net_kar || latest.netIncome;
+            this.baseEquity = latest.ozkaynaklar || latest.equity;
+            this.baseTotalAssets = latest.toplam_varliklar || latest.totalAssets;
+            this.baseEbitda = latest.favok || latest.ebitda;
+        }
+        return true;
     },
     calculateScores: function(company) {
-        if (!company || !company.data || company.data.length === 0) {
+        if (!company) {
             return null;
         }
-        const data = company.data;
+        const norm = (company.statements && company.statements.length > 0) ? company : normalizeCompanyData(company);
+        const data = norm ? (norm.statements || norm.data) : null;
+        if (!data || data.length === 0) {
+            return null;
+        }
+        // STRICT RULE: data[0] is the latest quarter, data[1] is the previous quarter
         const latest = data[0];
         const prev = data.length > 1 ? data[1] : latest;
 
         // Current period metrics
-        const ca_t = latest.currentAssets || 0;
-        const fa_t = latest.fixedAssets || 0;
-        const ta_t = latest.totalAssets || (ca_t + fa_t) || 1;
-        const stl_t = latest.shortTermLiab || 0;
-        const ltl_t = latest.longTermLiab || 0;
+        const ca_t = latest.currentAssets || latest.donen_varliklar || 0;
+        const fa_t = latest.fixedAssets || latest.duran_varliklar || 0;
+        const ta_t = latest.totalAssets || latest.toplam_varliklar || (ca_t + fa_t) || 1;
+        const stl_t = latest.shortTermLiab || latest.kisa_vadeli_yuk || 0;
+        const ltl_t = latest.longTermLiab || latest.uzun_vadeli_yuk || 0;
         const totalLiab_t = latest.totalLiab || (stl_t + ltl_t);
-        const eq_t = latest.equity || 0;
-        const rev_t = latest.revenue || 0;
-        const gp_t = latest.grossProfit || (rev_t * 0.25);
-        const ebitda_t = latest.ebitda || (latest.netIncome * 1.25) || 0;
-        const ni_t = latest.netIncome || 0;
+        const eq_t = latest.equity || latest.ozkaynaklar || 0;
+        const rev_t = latest.revenue || latest.net_satislar || 0;
+        const gp_t = latest.grossProfit || latest.brut_kar || (rev_t * 0.25);
+        const ebitda_t = latest.ebitda || latest.favok || (latest.netIncome * 1.25) || 0;
+        const ni_t = latest.netIncome || latest.net_kar || 0;
 
         // Previous period metrics
-        const ca_p = prev.currentAssets || 0;
-        const fa_p = prev.fixedAssets || 0;
-        const ta_p = prev.totalAssets || (ca_p + fa_p) || 1;
-        const stl_p = prev.shortTermLiab || 0;
-        const ltl_p = prev.longTermLiab || 0;
-        const rev_p = prev.revenue || 0;
-        const gp_p = prev.grossProfit || (rev_p * 0.25);
-        const ni_p = prev.netIncome || 0;
+        const ca_p = prev.currentAssets || prev.donen_varliklar || 0;
+        const fa_p = prev.fixedAssets || prev.duran_varliklar || 0;
+        const ta_p = prev.totalAssets || prev.toplam_varliklar || (ca_p + fa_p) || 1;
+        const stl_p = prev.shortTermLiab || prev.kisa_vadeli_yuk || 0;
+        const ltl_p = prev.longTermLiab || prev.uzun_vadeli_yuk || 0;
+        const rev_p = prev.revenue || prev.net_satislar || 0;
+        const gp_p = prev.grossProfit || prev.brut_kar || (rev_p * 0.25);
+        const ni_p = prev.netIncome || prev.net_kar || 0;
 
         // --- Piotroski F-Score (9 Kriter) ---
         // 1. Kârlılık (4 Kriter)
@@ -1911,3 +2163,26 @@ window.QuantData = {
         };
     }
 };
+
+// AUTO-NORMALIZE ALL PRELOADED COMPANIES AT STARTUP:
+// Guarantees all companies have strictly descending periods and standardized contract
+(function initNormalizePreloadedCompanies() {
+    if (window.QuantData && window.QuantData.companies) {
+        for (const [ticker, comp] of Object.entries(window.QuantData.companies)) {
+            window.QuantData.companies[ticker] = normalizeCompanyData(comp);
+        }
+        // Set initial assets from activeTicker (now descending!)
+        const activeComp = window.QuantData.getActiveCompany();
+        if (activeComp && activeComp.statements) {
+            window.QuantData.assets = activeComp.statements;
+            const latest = activeComp.statements[0];
+            if (latest) {
+                window.QuantData.baseNetIncome = latest.net_kar || latest.netIncome;
+                window.QuantData.baseEquity = latest.ozkaynaklar || latest.equity;
+                window.QuantData.baseTotalAssets = latest.toplam_varliklar || latest.totalAssets;
+                window.QuantData.baseEbitda = latest.favok || latest.ebitda;
+            }
+        }
+    }
+})();
+

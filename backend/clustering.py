@@ -555,12 +555,46 @@ class FinancialClusterEngine:
         """
         clustered_universe = cls.execute_clustering()
 
-        # Find target company
         selected_ticker_clean = selected_ticker.upper()
         selected_company = next(
             (c for c in clustered_universe if c["ticker"] == selected_ticker_clean),
-            clustered_universe[0]
+            None
         )
+        if not selected_company:
+            try:
+                from backend.api_server import get_company_data
+                c_data = get_company_data(selected_ticker_clean)
+                st = c_data['statements'][0] if c_data and 'statements' in c_data and c_data['statements'] else {}
+                roe_val = float(st.get('roe', 20.0))
+                de_val = float(st.get('debtToEquity', 1.0))
+                mcap = float(c_data.get('price', 100.0)) * float(c_data.get('shares', 1000000000)) / 1e9
+                cid = 0 if roe_val > 25 else (1 if de_val < 1.0 else (2 if de_val > 2.0 else 3))
+                cluster_names = {
+                    0: ("Yüksek Kârlı / Güçlü Büyüme", "#10B981"),
+                    1: ("Kelepir Değer / Fırsat", "#00F2FE"),
+                    2: ("Aşırı Kaldıraçlı / Riskli", "#F43F5E"),
+                    3: ("Durgun / Defansif", "#F59E0B")
+                }
+                cname, ccol = cluster_names.get(cid, ("BIST Genel Kümesi", "#10B981"))
+                selected_company = {
+                    "ticker": selected_ticker_clean,
+                    "name": c_data.get('name', f"{selected_ticker_clean} A.Ş."),
+                    "sector": c_data.get('sector', "BIST Genel"),
+                    "bist": c_data.get('bist', "BIST 100"),
+                    "market_cap": round(mcap, 1),
+                    "price": float(c_data.get('price', 100.0)),
+                    "roe": roe_val,
+                    "revenue_growth": 25.0,
+                    "debt_to_equity": de_val,
+                    "pe": float(st.get('pe', 6.5)),
+                    "current_ratio": float(st.get('currentRatio', 1.2)),
+                    "cluster_id": cid,
+                    "cluster_name": cname,
+                    "cluster_color": ccol
+                }
+                clustered_universe.insert(0, selected_company)
+            except Exception:
+                selected_company = clustered_universe[0]
 
         sector = selected_company["sector"]
         sector_peers = [c for c in clustered_universe if c["sector"] == sector]

@@ -5,12 +5,8 @@ import {
   Terminal,
   Send,
   X,
-  Sparkles,
   Bot,
-  User,
-  ShieldAlert,
-  TrendingUp,
-  DollarSign
+  User
 } from "lucide-react";
 
 export interface QuantCopilotWidgetProps {
@@ -90,31 +86,31 @@ export default function QuantCopilotWidget({
     const q = query.toLowerCase();
 
     if (q.includes("marj") || q.includes("kâr marjı") || q.includes("düşüş") || q.includes("kârlılık")) {
-      return `${ticker} için son çeyrekte net kâr marjı %18.5, brüt satış kâr marjı %21.4 seviyesindedir. Marjlar üzerindeki temel baskı; satışların maliyetinde (SMM) küresel enflasyon ve jet yakıtı / hammadde girdi artışlarından kaynaklanmaktadır. Ancak güçlü hasılat büyümesi birim maliyet erozyonunu tamponlamıştır.`;
+      return `${ticker} (${companyName}) için son çeyrekte kârlılık marjları ve operasyonel maliyetler incelendiğinde; satışların maliyeti (SMM) girdi enflasyonu ve hammadde maliyetlerinden etkilenmektedir. Hasılat büyümesi marj baskılarını dengelemektedir.`;
     }
 
     if (q.includes("kur") || q.includes("kur şoku") || q.includes("döviz") || q.includes("usd") || q.includes("dayanıklılık")) {
-      return `${ticker} şirketinin döviz şoku dayanıklılığı "YÜKSEK (A+)" seviyesindedir. Şirketin yabancı para net pozisyonu pozitif aktiftir ve gelirlerinin %70'inden fazlası döviz cinsindendir. Simülasyon motorumuza göre %35 USD/TRY kur şokunda şirket kambiyo zararı yerine +₺15.4 Mrd net kambiyo kârı üretmektedir.`;
+      return `${ticker} (${companyName}) şirketinin döviz şoku dayanıklılığı terminal stres testi motoruna göre modellenmiştir. Yabancı para net pozisyonu ve operasyonel döviz nakit akışı kur şoklarına karşı risk duyarlılığını belirlemektedir.`;
     }
 
     if (q.includes("piotroski") || q.includes("altman") || q.includes("iflas") || q.includes("temerrüt") || q.includes("sağlık")) {
-      return `${ticker} bilanço kalite karnesi: Piotroski F-Score 8/9 ("Güçlü Finansal Kalite"). Altman Z''-Score 4.82 ("Güvenli Bölge", Z > 2.6). Şirketin kârlılık, likidite ve operasyonel verimlilik kriterleri mükemmel seviyede olup temerrüt riski ihmal edilebilir düzeydedir.`;
+      return `${ticker} bilanço kalite karnesi: Piotroski F-Score ve Altman Z''-Score modelleri şirketin kârlılık, likidite ve operasyonel verimlilik kriterlerini çeyreklik bazda takip etmektedir. Temerrüt riski güvenli bölge sınırları içerisindedir.`;
     }
 
     if (q.includes("sürpriz") || q.includes("event") || q.includes("sue") || q.includes("car") || q.includes("reaksiyon")) {
-      return `${ticker} son çeyrek bilançosunda piyasa beklentisinin %15.8 üzerinde gerçekleşme sağladı. Standardized Unexpected Earnings (SUE) skoru +2.18 σ ve [-5, +5] gün kümülatif anormal getirisi (CAR) +%4.80 seviyesindedir. Model Sinyali: "POZİTİF ANORMAL ALFA".`;
+      return `${ticker} bilanço olay çalışması (Event Study): Standardized Unexpected Earnings (SUE) skoru ve [-5, +5] gün kümülatif anormal getirisi (CAR) piyasa konsensüs beklentisi ile gerçekleşen kâr sapması üzerinden hesaplanmaktadır.`;
     }
 
     if (q.includes("lstm") || q.includes("tahmin") || q.includes("trend") || q.includes("hedef")) {
-      return `PyTorch LSTM derin öğrenme modelimiz 20 günlük vadede ${ticker} için ₺${(price * 1.089).toFixed(2)} (+%8.9) fiyat projeksiyonu üretmektedir. %95 Güven Aralığı [₺${(price * 1.04).toFixed(2)} - ₺${(price * 1.135).toFixed(2)}] bandındadır. Yön: BULLISH ACCELERATION.`;
+      return `PyTorch LSTM derin öğrenme modelimiz 20 günlük vadede ${ticker} için ₺${(price * 1.089).toFixed(2)} (+%8.9) fiyat projeksiyonu üretmektedir. %95 Güven Aralığı [₺${(price * 1.04).toFixed(2)} - ₺${(price * 1.135).toFixed(2)}] bandındadır.`;
     }
 
     if (q.includes("rapor") || q.includes("sinyal") || q.includes("karne")) {
       if (onOpenSignalReport) onOpenSignalReport();
-      return `${ticker} için QuantFlux genel sinyali: GÜÇLÜ AL (STRONG BUY) - Skor: 8.8/10. Tüm karne dökümünü Sinyal Raporu modalında inceleyebilir ve PDF olarak yazdırabilirsiniz.`;
+      return `${ticker} için QuantFlux genel analitik karne ve model konsensüsü güncellendi. Tüm karne dökümünü Sinyal Raporu modalında inceleyebilir ve PDF olarak yazdırabilirsiniz.`;
     }
 
-    return `${ticker} için güncel terminal göstergeleri: F/K 2.66x, PD/DD 0.69x, Piotroski 8/9, Altman Z 4.82, %99 VaR %4.50. "Kâr marjı", "kur şoku" veya "sinyal raporu" sorabilirsiniz.`;
+    return `${ticker} (${companyName}) için güncel terminal göstergeleri devrede. "Kâr marjı", "kur şoku", "Piotroski skoru" veya "sinyal raporu" sorabilirsiniz.`;
   };
 
   return (

@@ -50,14 +50,37 @@ function initOverviewCharts() {
         const company = window.QuantData.getActiveCompany ? window.QuantData.getActiveCompany() : null;
         const dataList = (company && company.data) ? company.data : window.QuantData.assets;
         
-        const labels = dataList.map(d => d.period).reverse();
-        const sales = dataList.map(d => (d.revenue || d.currentAssets * 1.5) / 1e9).reverse();
-        const netIncome = dataList.map(d => (d.netIncome || 0) / 1e9).reverse();
+        // Chronological order: oldest -> newest (left -> right)
+        const chronList = (window.parsePeriodSortKey)
+            ? dataList.slice().sort((a,b) => window.parsePeriodSortKey(a.period) - window.parsePeriodSortKey(b.period))
+            : dataList.slice().reverse();
 
-        // Forecast projection next 2 periods
-        const lastNet = netIncome[netIncome.length - 1] || 100;
-        const lastSales = sales[sales.length - 1] || 500;
-        const extendedLabels = [...labels, '2026/12 (T)', '2027/12 (T)'];
+        const labels = chronList.map(d => d.period);
+        const sales = chronList.map(d => ((d.net_satislar || d.revenue || (d.donen_varliklar || d.currentAssets || 1e9) * 1.5)) / 1e9);
+        const netIncome = chronList.map(d => ((d.net_kar !== undefined ? d.net_kar : d.netIncome) || 0) / 1e9);
+
+        // Forecast projection next 2 periods dynamically computed
+        const lastNet = netIncome[netIncome.length - 1] || 10;
+        const lastSales = sales[sales.length - 1] || 50;
+
+        const latestPeriodStr = chronList[chronList.length - 1] ? chronList[chronList.length - 1].period : '';
+        let f1 = 'T+1 Projeksiyon';
+        let f2 = 'T+2 Projeksiyon';
+        if (latestPeriodStr && latestPeriodStr.includes('/')) {
+            const parts = latestPeriodStr.split('/');
+            const yr = parseInt(parts[0], 10);
+            const mo = parseInt(parts[1], 10);
+            if (!isNaN(yr) && !isNaN(mo)) {
+                if (mo === 12) {
+                    f1 = `${yr + 1}/06 (T)`;
+                    f2 = `${yr + 1}/12 (T)`;
+                } else {
+                    f1 = `${yr}/12 (T)`;
+                    f2 = `${yr + 1}/12 (T)`;
+                }
+            }
+        }
+        const extendedLabels = [...labels, f1, f2];
         
         const salesHist = [...sales, null, null];
         const netHist = [...netIncome, null, null];
@@ -186,15 +209,17 @@ function initFundamentalCharts() {
     const compCtx = document.getElementById('chart-fundamental-comp');
     if (compCtx && window.QuantData) {
         const company = window.QuantData.getActiveCompany ? window.QuantData.getActiveCompany() : null;
-        const periodsData = (company && company.data) ? company.data.slice().reverse() : [];
+        const periodsData = (company && company.data) 
+            ? company.data.slice().sort((a,b) => (window.parsePeriodSortKey ? (window.parsePeriodSortKey(a.period) - window.parsePeriodSortKey(b.period)) : 0)) 
+            : [];
         
         if (periodsData.length > 0) {
             const labels = periodsData.map(d => d.period);
-            const ca = periodsData.map(d => (d.currentAssets / 1e9).toFixed(1));
-            const fa = periodsData.map(d => (d.fixedAssets / 1e9).toFixed(1));
-            const stl = periodsData.map(d => (d.shortTermLiab / 1e9).toFixed(1));
-            const ltl = periodsData.map(d => (d.longTermLiab / 1e9).toFixed(1));
-            const eq = periodsData.map(d => (d.equity / 1e9).toFixed(1));
+            const ca = periodsData.map(d => (((d.donen_varliklar || d.currentAssets || 0) / 1e9).toFixed(1)));
+            const fa = periodsData.map(d => (((d.duran_varliklar || d.fixedAssets || 0) / 1e9).toFixed(1)));
+            const stl = periodsData.map(d => (((d.kisa_vadeli_yuk || d.shortTermLiab || 0) / 1e9).toFixed(1)));
+            const ltl = periodsData.map(d => (((d.uzun_vadeli_yuk || d.longTermLiab || 0) / 1e9).toFixed(1)));
+            const eq = periodsData.map(d => (((d.ozkaynaklar || d.equity || 0) / 1e9).toFixed(1)));
 
             if (fundCompChart) fundCompChart.destroy();
             fundCompChart = new Chart(compCtx.getContext('2d'), {
@@ -236,11 +261,11 @@ function initFundamentalCharts() {
         const latest = (company && company.data && company.data[0]) ? company.data[0] : null;
 
         if (latest) {
-            const rev = (latest.revenue / 1e9) || 100;
-            const cost = (Math.abs(latest.costOfSales) / 1e9) || 70;
-            const gp = (latest.grossProfit / 1e9) || (rev - cost);
-            const op = (latest.operatingProfit / 1e9) || (gp * 0.6);
-            const ni = (latest.netIncome / 1e9) || (op * 0.8);
+            const rev = ((latest.net_satislar || latest.revenue || 0) / 1e9) || 100;
+            const cost = (Math.abs(latest.satislarin_maliyeti || latest.costOfSales || 0) / 1e9) || 70;
+            const gp = ((latest.brut_kar || latest.grossProfit || 0) / 1e9) || (rev - cost);
+            const op = ((latest.faaliyet_kari || latest.operatingProfit || 0) / 1e9) || (gp * 0.6);
+            const ni = ((latest.net_kar || latest.netIncome || 0) / 1e9) || (op * 0.8);
 
             const labels = ['Hasılat', 'Satış Maliyeti (-)', 'Brüt Kâr', 'Faaliyet Kârı', 'Net Kâr'];
             const data = [rev, cost, gp, op, ni];
@@ -745,7 +770,8 @@ async function initSectorClustering(ticker) {
     
     let clusterData = null;
     try {
-        const res = await fetch(`http://localhost:8000/api/terminal/clustering/${ticker}`);
+        const apiBase = window.location.origin || 'http://localhost:8080';
+        const res = await fetch(`${apiBase}/api/terminal/clustering/${ticker}`);
         if (res.ok) {
             clusterData = await res.json();
         }
@@ -1033,24 +1059,76 @@ async function initSectorClustering(ticker) {
 
 // Fallback generator for clustering
 function getFallbackClusteringData(ticker) {
-    const isTHY = (ticker === 'THYAO');
+    const comp = (window.QuantData && window.QuantData.companies && window.QuantData.companies[ticker])
+        ? window.QuantData.companies[ticker]
+        : (window.QuantData && window.QuantData.getActiveCompany ? window.QuantData.getActiveCompany() : null);
+    const latest = (comp && comp.data && comp.data[0]) ? comp.data[0] : null;
+
+    const compName = comp ? comp.name : `${ticker} A.Ş.`;
+    const compSector = comp ? comp.sector : "Sanayi & Ticaret";
+    const compRoe = latest ? (latest.roe || 24.5) : 24.5;
+    const compDebt = latest ? (latest.debtToEquity || 1.15) : 1.15;
+    const compPe = latest ? (latest.pe || 5.2) : 5.2;
+    const compCR = latest ? (latest.currentRatio || 1.25) : 1.25;
+    const compGrowth = latest ? (latest.netMargin || 35.0) : 35.0;
+    const compCap = comp ? ((comp.price * comp.shares) / 1e9 || 250.0) : 250.0;
+
+    const clusterId = compRoe > 30 ? 0 : (compPe < 6 ? 1 : (compDebt > 2.0 ? 2 : 3));
+    const clusterNames = ["Yüksek Kârlı / Güçlü Büyüme", "Kelepir Değer / Fırsat", "Aşırı Kaldıraçlı / Riskli", "Durgun / Defansif"];
+    const clusterColors = ["#10B981", "#00F2FE", "#F43F5E", "#F59E0B"];
+
+    const selected_company = {
+        ticker: ticker,
+        name: compName,
+        sector: compSector,
+        bist: (comp && comp.bist) ? comp.bist : "BIST 30",
+        market_cap: +compCap.toFixed(1),
+        price: comp ? comp.price : 100.0,
+        roe: +Number(compRoe).toFixed(1),
+        revenue_growth: +Number(compGrowth).toFixed(1),
+        debt_to_equity: +Number(compDebt).toFixed(2),
+        pe: +Number(compPe).toFixed(2),
+        current_ratio: +Number(compCR).toFixed(2),
+        cluster_id: clusterId,
+        cluster_name: clusterNames[clusterId],
+        cluster_color: clusterColors[clusterId]
+    };
+
+    const scatterPoints = [
+        { ticker: "THYAO", name: "Türk Hava Yolları", sector: "Havacılık / Ulaştırma", x_roe: 35.7, y_debt_equity: 1.30, size_market_cap: 434, pe: 2.66, revenue_growth: 47.8, current_ratio: 0.94, cluster_id: 0 },
+        { ticker: "PGSUS", name: "Pegasus", sector: "Havacılık / Ulaştırma", x_roe: 28.4, y_debt_equity: 1.85, size_market_cap: 252, pe: 5.40, revenue_growth: 52.1, current_ratio: 0.88, cluster_id: 0 },
+        { ticker: "TAVHL", name: "TAV Havalimanları", sector: "Havacılık / Ulaştırma", x_roe: 18.2, y_debt_equity: 1.95, size_market_cap: 98, pe: 8.80, revenue_growth: 34.6, current_ratio: 1.15, cluster_id: 2 },
+        { ticker: "KCHOL", name: "Koç Holding", sector: "Holding / Yatırım", x_roe: 19.5, y_debt_equity: 0.72, size_market_cap: 492, pe: 4.18, revenue_growth: 36.2, current_ratio: 1.45, cluster_id: 1 },
+        { ticker: "SAHOL", name: "Sabancı Holding", sector: "Holding / Yatırım", x_roe: 17.8, y_debt_equity: 0.58, size_market_cap: 204, pe: 3.75, revenue_growth: 28.5, current_ratio: 1.52, cluster_id: 1 },
+        { ticker: "BIMAS", name: "BİM Mağazalar", sector: "Perakende Ticaret", x_roe: 38.6, y_debt_equity: 0.95, size_market_cap: 312, pe: 11.20, revenue_growth: 54.2, current_ratio: 0.85, cluster_id: 0 },
+        { ticker: "FROTO", name: "Ford Otosan", sector: "Otomotiv", x_roe: 44.5, y_debt_equity: 1.65, size_market_cap: 378, pe: 7.45, revenue_growth: 42.0, current_ratio: 1.08, cluster_id: 0 },
+        { ticker: "EREGL", name: "Ereğli Demir Çelik", sector: "Demir Çelik", x_roe: 8.2, y_debt_equity: 0.48, size_market_cap: 182, pe: 14.50, revenue_growth: 12.4, current_ratio: 2.15, cluster_id: 3 },
+        { ticker: "PETKM", name: "Petkim Petrokimya", sector: "Enerji / Petrokimya", x_roe: 3.8, y_debt_equity: 2.45, size_market_cap: 52, pe: 28.50, revenue_growth: 8.5, current_ratio: 0.82, cluster_id: 2 },
+        { ticker: "TUPRS", name: "Tüpraş Rafineri", sector: "Enerji / Petrol", x_roe: 31.4, y_debt_equity: 0.65, size_market_cap: 318, pe: 4.60, revenue_growth: 24.5, current_ratio: 1.38, cluster_id: 1 },
+        { ticker: "ASELS", name: "Aselsan", sector: "Savunma Sanayi", x_roe: 25.1, y_debt_equity: 0.88, size_market_cap: 298, pe: 10.50, revenue_growth: 45.0, current_ratio: 1.75, cluster_id: 0 }
+    ];
+
+    const existingIdx = scatterPoints.findIndex(p => p.ticker === ticker);
+    const customPoint = {
+        ticker: ticker,
+        name: compName,
+        sector: compSector,
+        x_roe: selected_company.roe,
+        y_debt_equity: selected_company.debt_to_equity,
+        size_market_cap: selected_company.market_cap,
+        pe: selected_company.pe,
+        revenue_growth: selected_company.revenue_growth,
+        current_ratio: selected_company.current_ratio,
+        cluster_id: clusterId
+    };
+    if (existingIdx >= 0) {
+        scatterPoints[existingIdx] = customPoint;
+    } else {
+        scatterPoints.push(customPoint);
+    }
+
     return {
-        selected_company: {
-            ticker: ticker,
-            name: isTHY ? "Türk Hava Yolları A.O." : `${ticker} BIST`,
-            sector: isTHY ? "Havacılık / Ulaştırma" : "Holding / Yatırım",
-            bist: "BIST 30",
-            market_cap: isTHY ? 434.0 : 250.0,
-            price: 314.5,
-            roe: isTHY ? 35.7 : 19.5,
-            revenue_growth: isTHY ? 47.8 : 36.2,
-            debt_to_equity: isTHY ? 1.30 : 0.72,
-            pe: isTHY ? 2.66 : 4.18,
-            current_ratio: isTHY ? 0.94 : 1.45,
-            cluster_id: isTHY ? 0 : 1,
-            cluster_name: isTHY ? "Yüksek Kârlı / Güçlü Büyüme" : "Kelepir Değer / Fırsat",
-            cluster_color: isTHY ? "#10B981" : "#00F2FE"
-        },
+        selected_company: selected_company,
         clusters: [
             { id: 0, name: "Yüksek Kârlı / Güçlü Büyüme", color: "#10B981", company_count: 6, tickers: ["THYAO", "PGSUS", "BIMAS", "FROTO", "ASELS"], avg_roe: 33.8, avg_growth: 45.2, avg_pe: 7.2, avg_debt: 1.25 },
             { id: 1, name: "Kelepir Değer / Fırsat", color: "#00F2FE", company_count: 5, tickers: ["KCHOL", "SAHOL", "TUPRS", "TOASO"], avg_roe: 22.4, avg_growth: 28.5, avg_pe: 4.1, avg_debt: 0.68 },
@@ -1058,28 +1136,22 @@ function getFallbackClusteringData(ticker) {
             { id: 3, name: "Durgun / Defansif", color: "#F59E0B", company_count: 6, tickers: ["EREGL", "KRDMD", "SISE", "BERA", "ENKAI"], avg_roe: 7.4, avg_growth: 14.2, avg_pe: 12.8, avg_debt: 0.55 }
         ],
         scatter_plot: {
-            points: [
-                { ticker: "THYAO", name: "Türk Hava Yolları", sector: "Havacılık / Ulaştırma", x_roe: 35.7, y_debt_equity: 1.30, size_market_cap: 434, pe: 2.66, revenue_growth: 47.8, current_ratio: 0.94, cluster_id: 0 },
-                { ticker: "PGSUS", name: "Pegasus", sector: "Havacılık / Ulaştırma", x_roe: 28.4, y_debt_equity: 1.85, size_market_cap: 252, pe: 5.40, revenue_growth: 52.1, current_ratio: 0.88, cluster_id: 0 },
-                { ticker: "TAVHL", name: "TAV Havalimanları", sector: "Havacılık / Ulaştırma", x_roe: 18.2, y_debt_equity: 1.95, size_market_cap: 98, pe: 8.80, revenue_growth: 34.6, current_ratio: 1.15, cluster_id: 2 },
-                { ticker: "KCHOL", name: "Koç Holding", sector: "Holding / Yatırım", x_roe: 19.5, y_debt_equity: 0.72, size_market_cap: 492, pe: 4.18, revenue_growth: 36.2, current_ratio: 1.45, cluster_id: 1 },
-                { ticker: "SAHOL", name: "Sabancı Holding", sector: "Holding / Yatırım", x_roe: 17.8, y_debt_equity: 0.58, size_market_cap: 204, pe: 3.75, revenue_growth: 28.5, current_ratio: 1.52, cluster_id: 1 },
-                { ticker: "BIMAS", name: "BİM Mağazalar", sector: "Perakende Ticaret", x_roe: 38.6, y_debt_equity: 0.95, size_market_cap: 312, pe: 11.20, revenue_growth: 54.2, current_ratio: 0.85, cluster_id: 0 },
-                { ticker: "FROTO", name: "Ford Otosan", sector: "Otomotiv", x_roe: 44.5, y_debt_equity: 1.65, size_market_cap: 378, pe: 7.45, revenue_growth: 42.0, current_ratio: 1.08, cluster_id: 0 },
-                { ticker: "EREGL", name: "Ereğli Demir Çelik", sector: "Demir Çelik", x_roe: 8.2, y_debt_equity: 0.48, size_market_cap: 182, pe: 14.50, revenue_growth: 12.4, current_ratio: 2.15, cluster_id: 3 },
-                { ticker: "PETKM", name: "Petkim Petrokimya", sector: "Enerji / Petrokimya", x_roe: 3.8, y_debt_equity: 2.45, size_market_cap: 52, pe: 28.50, revenue_growth: 8.5, current_ratio: 0.82, cluster_id: 2 },
-                { ticker: "TUPRS", name: "Tüpraş Rafineri", sector: "Enerji / Petrol", x_roe: 31.4, y_debt_equity: 0.65, size_market_cap: 318, pe: 4.60, revenue_growth: 24.5, current_ratio: 1.38, cluster_id: 1 },
-                { ticker: "ASELS", name: "Aselsan", sector: "Savunma Sanayi", x_roe: 25.1, y_debt_equity: 0.88, size_market_cap: 298, pe: 10.50, revenue_growth: 45.0, current_ratio: 1.75, cluster_id: 0 }
-            ]
+            points: scatterPoints
         },
         radar_chart: {
             categories: ["Kârlılık (ROE)", "Satış Büyümesi", "Finansal Güç (Ters Kaldıraç)", "Değerleme Cazibesi (Ters F/K)", "Likidite (Cari Oran)"],
-            selected_series: [71.4, 79.7, 60.7, 97.6, 13.3],
+            selected_series: [
+                Math.min(100, selected_company.roe * 2),
+                Math.min(100, selected_company.revenue_growth * 1.8),
+                Math.max(10, Math.min(100, (3 - selected_company.debt_to_equity) * 35)),
+                Math.max(10, Math.min(100, (20 - selected_company.pe) * 5)),
+                Math.min(100, selected_company.current_ratio * 40)
+            ],
             sector_series: [54.8, 74.8, 40.2, 75.4, 21.0],
             cluster_series: [67.6, 75.3, 58.4, 82.5, 30.5]
         },
         peers: {
-            sector: isTHY ? "Havacılık / Ulaştırma" : "Holding / Yatırım",
+            sector: compSector,
             sector_peers: [
                 { ticker: "PGSUS", name: "Pegasus Hava Taşımacılığı", sector: "Havacılık / Ulaştırma", cluster_name: "Yüksek Kârlı / Güçlü Büyüme", cluster_id: 0, roe: 28.4, revenue_growth: 52.1, debt_to_equity: 1.85, pe: 5.40, current_ratio: 0.88, market_cap: 252.0 },
                 { ticker: "TAVHL", name: "TAV Havalimanları", sector: "Havacılık / Ulaştırma", cluster_name: "Aşırı Kaldıraçlı / Riskli", cluster_id: 2, roe: 18.2, revenue_growth: 34.6, debt_to_equity: 1.95, pe: 8.80, current_ratio: 1.15, market_cap: 98.5 }
@@ -1107,7 +1179,8 @@ async function initTimeseriesEventStudy(ticker, quarter) {
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 2500);
-        const res = await fetch(`http://localhost:8000/api/terminal/event-study/${activeTicker}?quarter=${encodeURIComponent(selectedQuarter)}`, {
+        const apiBase = window.location.origin || 'http://localhost:8080';
+        const res = await fetch(`${apiBase}/api/terminal/event-study/${activeTicker}?quarter=${encodeURIComponent(selectedQuarter)}`, {
             signal: controller.signal
         });
         clearTimeout(timeoutId);
@@ -1371,8 +1444,36 @@ function getFallbackEventStudyData(ticker, quarter) {
             ]
         }
     };
-
-    const q = quarters[quarter] || quarters['2026/06'];
+    let q = quarters[quarter];
+    if (!q) {
+        const comp = (window.QuantData && window.QuantData.companies) ? window.QuantData.companies[ticker] : null;
+        const st = (comp && comp.data) ? comp.data.find(d => d.period === quarter) : (comp && comp.data ? comp.data[0] : null);
+        const actual = st ? (st.net_kar || st.netIncome || 15e9) : 15e9;
+        const estimate = actual * 0.88;
+        const surpPct = estimate !== 0 ? +(((actual - estimate) / Math.abs(estimate)) * 100).toFixed(2) : 12.5;
+        const sue = +(surpPct / 15).toFixed(2);
+        q = {
+            disclosure_date: st ? (st.disclosure_date || st.period_end_date || '2026-08-14') : '2026-08-14',
+            estimate: estimate,
+            actual: actual,
+            surprise_pct: surpPct,
+            sue: sue,
+            alpha: 0.0007,
+            beta: 1.12,
+            r2: 0.72,
+            sigma_eps: 0.0125,
+            signal: surpPct > 15 ? 'STRONG_BUY' : (surpPct > 3 ? 'BUY' : (surpPct < -5 ? 'SELL' : 'HOLD')),
+            signal_text: surpPct > 15 ? 'GÜÇLÜ POZİTİF (STRONG BUY)' : 'POZİTİF (BUY)',
+            ar_series: [
+                {day: -5, r_i: 0.005, r_m: 0.004}, {day: -4, r_i: 0.008, r_m: 0.005},
+                {day: -3, r_i: 0.006, r_m: 0.003}, {day: -2, r_i: 0.009, r_m: 0.004},
+                {day: -1, r_i: 0.007, r_m: 0.002}, {day: 0,  r_i: +(surpPct * 0.0012).toFixed(4), r_m: 0.005},
+                {day: 1,  r_i: 0.012, r_m: 0.004}, {day: 2,  r_i: 0.008, r_m: 0.003},
+                {day: 3,  r_i: 0.005, r_m: 0.002}, {day: 4,  r_i: 0.004, r_m: 0.003},
+                {day: 5,  r_i: 0.003, r_m: 0.002}
+            ]
+        };
+    }
     let runningCar = 0;
     const curve = [];
 

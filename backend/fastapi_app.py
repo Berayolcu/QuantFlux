@@ -68,10 +68,12 @@ def get_companies():
 
 @app.post("/api/stress-test")
 def run_stress_test(req: MacroStressRequest):
-    # Quant macroeconomic transmission model
-    base_net = 18.766e9 if req.ticker == "THYAO" else 46.868e9
-    base_rev = 585.069e9
-    base_cost = 542.482e9
+    from backend.api_server import get_company_data
+    comp = get_company_data(req.ticker)
+    latest = comp['statements'][0] if comp and 'statements' in comp and comp['statements'] else {}
+    base_net = float(latest.get('net_kar', 38.5e9))
+    base_rev = float(latest.get('net_satislar', 290.0e9))
+    base_cost = abs(float(latest.get('costOfSales', base_rev * 0.75))) or (base_rev * 0.75)
 
     stressed_rev = base_rev * (1 + req.revShock / 100)
     stressed_cost = base_cost * (1 + (req.costShock / 100) + (req.fxShock / 100 * 0.35))

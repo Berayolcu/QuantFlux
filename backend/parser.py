@@ -8,8 +8,23 @@ import csv
 import io
 import re
 from datetime import datetime, date
-from typing import List, Dict, Tuple, Any, Optional
-from backend.schemas import CSVParseErrorDetail
+try:
+    from backend.schemas import CSVParseErrorDetail
+except ImportError:
+    from dataclasses import dataclass
+    @dataclass
+    class CSVParseErrorDetail:
+        row: int
+        field: str
+        value: Any
+        error_type: str
+        message: str
+        critical: bool = False
+        def model_dump(self):
+            return {
+                'row': self.row, 'field': self.field, 'value': str(self.value),
+                'error_type': self.error_type, 'message': self.message, 'critical': self.critical
+            }
 
 # Column Name Aliases (Turkish & English, with and without diacritics)
 HEADER_ALIASES = {
@@ -290,24 +305,60 @@ def parse_financials_csv(
         records.append({
             'ticker': ticker,
             'period': period_raw,
-            'period_end_date': period_end_date,
-            'disclosure_date': disclosure_date,
+            'period_end_date': str(period_end_date),
+            'disclosure_date': str(disclosure_date),
             'donen_varliklar': donen,
             'duran_varliklar': duran,
             'toplam_varliklar': toplam_varlik,
             'kisa_vadeli_yuk': kisa_yuk,
             'uzun_vadeli_yuk': uzun_yuk,
+            'totalLiab': kisa_yuk + uzun_yuk,
             'ozkaynaklar': ozkaynak,
             'net_satislar': net_satis,
             'favok': favok,
             'net_kar': net_kar,
+            # CamelCase aliases for universal contract:
+            'currentAssets': donen,
+            'fixedAssets': duran,
+            'totalAssets': toplam_varlik,
+            'shortTermLiab': kisa_yuk,
+            'longTermLiab': uzun_yuk,
+            'equity': ozkaynak,
+            'revenue': net_satis,
+            'ebitda': favok,
+            'netIncome': net_kar,
+            'costOfSales': -net_satis * 0.75 if net_satis > 0 else 0,
+            'grossProfit': net_satis * 0.25 if net_satis > 0 else 0,
+            'operatingProfit': favok * 0.8 if favok > 0 else net_kar,
             'current_ratio': current_ratio,
+            'currentRatio': current_ratio,
             'debt_to_equity': debt_to_equity,
+            'debtToEquity': debt_to_equity,
             'net_margin': net_margin,
+            'netMargin': net_margin,
             'roe': roe,
             'roa': roa,
             'is_balanced': is_balanced,
             'source_filename': source_filename
         })
+
+    def parse_period_sort_key(p: str) -> int:
+        if not p:
+            return 0
+        m = re.search(r'(\d{4})[^\d]?(\d{1,2})?', str(p).strip())
+        if not m:
+            return 0
+        y = int(m.group(1))
+        q = int(m.group(2)) if m.group(2) else 12
+        return y * 100 + q
+
+    # STRICT AUTO-SORT: Descending order (statements[0] is the newest quarter)
+    records.sort(
+        key=lambda r: (
+            parse_period_sort_key(r.get('period', '')),
+            str(r.get('period_end_date', ''))
+        ),
+        reverse=True
+    )
 
     return records, errors, warnings

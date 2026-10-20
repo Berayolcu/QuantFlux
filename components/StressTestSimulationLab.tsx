@@ -76,7 +76,8 @@ export interface PresetScenario {
   id: string;
   name: string;
   badge: string;
-  description: string;
+  description?: string;
+  desc?: string;
   cogs_increase_pct: number;
   fx_shock_pct: number;
   interest_rate_hike_bps: number;
@@ -533,7 +534,7 @@ export const StressTestSimulationLab: React.FC<StressTestLabProps> = ({
                     {sc.badge}
                   </span>
                   <h4 className="text-xs font-bold text-slate-100 mt-2 line-clamp-1">{sc.name}</h4>
-                  <p className="text-[11px] text-slate-400 mt-1 line-clamp-2 leading-relaxed">{sc.desc}</p>
+                  <p className="text-[11px] text-slate-400 mt-1 line-clamp-2 leading-relaxed">{sc.desc || sc.description}</p>
                 </div>
                 <div className="mt-3 pt-2 border-t border-slate-800/80 text-[10px] font-mono text-slate-400 flex items-center justify-between">
                   <span>FX: +%{sc.fx_shock_pct}</span>

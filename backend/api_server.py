@@ -12,10 +12,12 @@ import sys
 import math
 import urllib.parse
 
-PORT = 8000
+PORT = int(os.environ.get('PORT', 8080))
 WORKSPACE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if WORKSPACE_DIR not in sys.path:
     sys.path.insert(0, WORKSPACE_DIR)
+
+import unicodedata
 
 FILES = {
     'THYAO': 'TÜRK HAVA YOLLARI A.O..xls',
@@ -31,12 +33,187 @@ COMPANY_META = {
     'BERA': {'name': 'Bera Holding A.Ş.', 'sector': 'İmalat / Çeşitlendirilmiş', 'bist': 'BIST 100', 'price': 21.80, 'shares': 683200000}
 }
 
+DYNAMIC_COMPANIES = {}
+
 def clean_key(s):
     s = s.lower()
     return s.replace('â', 'a').replace('î', 'i').replace('û', 'u').replace('ı', 'i').replace('ö', 'o').replace('ü', 'u').replace('ş', 's').replace('ç', 'c').replace('ğ', 'g')
 
+def parse_period_sort_key(period_str):
+    if not period_str:
+        return 0
+    m = re.search(r'(\d{4})[^\d]?(\d{1,2})?', str(period_str).strip())
+    if not m:
+        return 0
+    y = int(m.group(1))
+    q = int(m.group(2)) if m.group(2) else 12
+    return y * 100 + q
+
+def derive_dates_from_period(period_str):
+    str_val = str(period_str or '2026/06').strip()
+    m = re.search(r'(\d{4})[^\d]?(\d{1,2})?', str_val)
+    year = int(m.group(1)) if m else 2026
+    month = int(m.group(2)) if m and m.group(2) else 6
+    if month <= 3:
+        return f"{year}-03-31", f"{year}-05-10"
+    elif month <= 6:
+        return f"{year}-06-30", f"{year}-08-14"
+    elif month <= 9:
+        return f"{year}-09-30", f"{year}-11-08"
+    else:
+        return f"{year}-12-31", f"{year + 1}-03-04"
+
+def normalize_company_data(raw):
+    """
+    Universal Data Contract Normalizer.
+    Guarantees that statements are sorted strictly descending (newest quarter at index 0)
+    and all financial keys follow standard format.
+    """
+    if not raw:
+        return None
+    ticker = str(raw.get('ticker') or raw.get('symbol') or 'GENERIC').upper()
+    name = raw.get('name') or f"{ticker} A.Ş."
+    sector = raw.get('sector') or 'BIST Genel'
+    bist = raw.get('bist') or 'BIST 100'
+    price = float(raw.get('price', 100.0))
+    shares = float(raw.get('shares', 1000000000))
+
+    raw_stmts = raw.get('statements') or raw.get('data') or raw.get('records') or []
+    norm_stmts = []
+
+    for idx, s in enumerate(raw_stmts):
+        p = str(s.get('period') or f"Dönem {idx + 1}").strip()
+        def_end, def_disc = derive_dates_from_period(p)
+        p_end = str(s.get('period_end_date') or def_end)[:10]
+        p_disc = str(s.get('disclosure_date') or def_disc)[:19]
+
+        ca = float(s.get('donen_varliklar', s.get('currentAssets', 0.0)) or 0.0)
+        fa = float(s.get('duran_varliklar', s.get('fixedAssets', 0.0)) or 0.0)
+        ta = float(s.get('toplam_varliklar', s.get('totalAssets', 0.0)) or 0.0)
+        if ta <= 0:
+            ta = ca + fa
+
+        stl = float(s.get('kisa_vadeli_yuk', s.get('shortTermLiab', 0.0)) or 0.0)
+        ltl = float(s.get('uzun_vadeli_yuk', s.get('longTermLiab', 0.0)) or 0.0)
+        total_liab = float(s.get('totalLiab', 0.0) or (stl + ltl))
+        eq = float(s.get('ozkaynaklar', s.get('equity', 0.0)) or 0.0)
+        rev = float(s.get('net_satislar', s.get('revenue', 0.0)) or 0.0)
+        ni = float(s.get('net_kar', s.get('netIncome', 0.0)) or 0.0)
+        fav = float(s.get('favok', s.get('ebitda', 0.0)) or (ni * 1.25 if ni != 0 else rev * 0.20))
+
+        norm_stmts.append({
+            'period': p,
+            'period_end_date': p_end,
+            'disclosure_date': p_disc,
+            'donen_varliklar': ca,
+            'duran_varliklar': fa,
+            'toplam_varliklar': ta,
+            'kisa_vadeli_yuk': stl,
+            'uzun_vadeli_yuk': ltl,
+            'totalLiab': total_liab,
+            'ozkaynaklar': eq,
+            'net_satislar': rev,
+            'favok': fav,
+            'net_kar': ni,
+            'currentAssets': ca,
+            'fixedAssets': fa,
+            'totalAssets': ta,
+            'shortTermLiab': stl,
+            'longTermLiab': ltl,
+            'equity': eq,
+            'revenue': rev,
+            'ebitda': fav,
+            'netIncome': ni,
+            'currentRatio': round(ca / stl, 2) if stl > 0 else 1.0,
+            'debtToEquity': round(total_liab / eq, 2) if eq > 0 else 1.0,
+            'roe': round((ni / eq) * 100, 1) if eq > 0 else 0.0,
+            'netMargin': round((ni / rev) * 100, 1) if rev > 0 else 0.0
+        })
+
+    # STRICT AUTO-SORT: Descending order (statements[0] is newest quarter)
+    norm_stmts.sort(key=lambda item: parse_period_sort_key(item.get('period')), reverse=True)
+    periods = [st['period'] for st in norm_stmts]
+
+    return {
+        'ticker': ticker,
+        'name': name,
+        'sector': sector,
+        'bist': bist,
+        'price': price,
+        'shares': shares,
+        'periods': periods,
+        'statements': norm_stmts,
+        'data': norm_stmts
+    }
+
+def generate_generic_company_data(ticker, name=None, sector=None):
+    t = str(ticker or 'GENERIC').upper()
+    meta = COMPANY_META.get(t, {})
+    n = name or meta.get('name', f"{t} Sanayi ve Ticaret A.Ş.")
+    s = sector or meta.get('sector', 'BIST İmalat / Genel')
+    p = meta.get('price', 85.50)
+    sh = meta.get('shares', 1200000000)
+
+    raw_statements = [
+        {
+            'period': '2026/06', 'period_end_date': '2026-06-30', 'disclosure_date': '2026-08-14 18:30:00',
+            'donen_varliklar': 245000000000.0, 'duran_varliklar': 380000000000.0, 'toplam_varliklar': 625000000000.0,
+            'kisa_vadeli_yuk': 210000000000.0, 'uzun_vadeli_yuk': 165000000000.0, 'ozkaynaklar': 250000000000.0,
+            'net_satislar': 290000000000.0, 'favok': 62000000000.0, 'net_kar': 38500000000.0
+        },
+        {
+            'period': '2025/12', 'period_end_date': '2025-12-31', 'disclosure_date': '2026-03-02 18:45:00',
+            'donen_varliklar': 215000000000.0, 'duran_varliklar': 330000000000.0, 'toplam_varliklar': 545000000000.0,
+            'kisa_vadeli_yuk': 185000000000.0, 'uzun_vadeli_yuk': 145000000000.0, 'ozkaynaklar': 215000000000.0,
+            'net_satislar': 480000000000.0, 'favok': 98000000000.0, 'net_kar': 54000000000.0
+        },
+        {
+            'period': '2024/12', 'period_end_date': '2024-12-31', 'disclosure_date': '2025-03-04 18:40:00',
+            'donen_varliklar': 170000000000.0, 'duran_varliklar': 260000000000.0, 'toplam_varliklar': 430000000000.0,
+            'kisa_vadeli_yuk': 150000000000.0, 'uzun_vadeli_yuk': 110000000000.0, 'ozkaynaklar': 170000000000.0,
+            'net_satislar': 360000000000.0, 'favok': 72000000000.0, 'net_kar': 41000000000.0
+        },
+        {
+            'period': '2023/12', 'period_end_date': '2023-12-31', 'disclosure_date': '2024-03-05 18:45:00',
+            'donen_varliklar': 125000000000.0, 'duran_varliklar': 195000000000.0, 'toplam_varliklar': 320000000000.0,
+            'kisa_vadeli_yuk': 115000000000.0, 'uzun_vadeli_yuk': 85000000000.0, 'ozkaynaklar': 120000000000.0,
+            'net_satislar': 250000000000.0, 'favok': 51000000000.0, 'net_kar': 29000000000.0
+        }
+    ]
+
+    return normalize_company_data({
+        'ticker': t,
+        'name': n,
+        'sector': s,
+        'bist': meta.get('bist', 'BIST 100'),
+        'price': p,
+        'shares': sh,
+        'statements': raw_statements
+    })
+
+def resolve_file_path(filename):
+    """Locates file checking workspace root, xls folder, and Unicode variations."""
+    if not filename:
+        return None
+    candidates = [
+        os.path.join(WORKSPACE_DIR, filename),
+        os.path.join(WORKSPACE_DIR, 'xls', filename)
+    ]
+    for c in candidates:
+        if os.path.exists(c):
+            return c
+
+    # Normalize unicode check
+    norm_fn = unicodedata.normalize('NFC', filename)
+    for check_dir in [WORKSPACE_DIR, os.path.join(WORKSPACE_DIR, 'xls')]:
+        if os.path.exists(check_dir):
+            for entry in os.listdir(check_dir):
+                if unicodedata.normalize('NFC', entry) == norm_fn or entry.lower() == filename.lower():
+                    return os.path.join(check_dir, entry)
+    return None
+
 def parse_xls_data(filepath):
-    if not os.path.exists(filepath):
+    if not filepath or not os.path.exists(filepath):
         return [], 'TL', {}
     with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
         content = f.read()
@@ -66,63 +243,68 @@ def parse_xls_data(filepath):
     return periods, unit, items
 
 def get_company_data(ticker):
-    filename = FILES.get(ticker)
-    if not filename: return None
-    filepath = os.path.join(WORKSPACE_DIR, filename)
-    periods, unit, items = parse_xls_data(filepath)
-    mult = 1.0
-    if '1000000' in unit: mult = 1000000.0
-    elif '1000' in unit: mult = 1000.0
+    ticker_clean = str(ticker).upper()
+    if ticker_clean in DYNAMIC_COMPANIES:
+        return DYNAMIC_COMPANIES[ticker_clean]
 
-    def get_row(keys):
-        for k in keys:
-            ck = clean_key(k)
-            for item_k, v in items.items():
-                if ck in item_k:
-                    return [x * mult for x in v]
-        return [0.0] * len(periods)
+    filename = FILES.get(ticker_clean)
+    filepath = resolve_file_path(filename) if filename else None
 
-    ca = get_row(['donen varliklar'])
-    fa = get_row(['duran varliklar'])
-    ta = get_row(['toplam varliklar', 'varliklar'])
-    stl = get_row(['kisa vadeli yukumlulukler'])
-    ltl = get_row(['uzun vadeli yukumlulukler'])
-    eq = get_row(['toplam ozkaynaklar', 'ana ortakliga ait ozkaynaklar'])
-    rev = get_row(['hasilat', 'toplam hasilat'])
-    gp = get_row(['brut kar', 'ticari faaliyetlerden brut kar'])
-    op = get_row(['esas faaliyet kari'])
-    ni = get_row(['net donem kari', 'surdurulen faaliyetler donem kari'])
+    if filepath and os.path.exists(filepath):
+        periods, unit, items = parse_xls_data(filepath)
+        mult = 1.0
+        if '1000000' in unit: mult = 1000000.0
+        elif '1000' in unit: mult = 1000.0
 
-    data = []
-    for i, p in enumerate(periods):
-        tot_act = ta[i] if ta[i] > 0 else (ca[i] + fa[i])
-        data.append({
-            'period': p,
-            'currentAssets': ca[i],
-            'fixedAssets': fa[i],
-            'totalAssets': tot_act,
-            'shortTermLiab': stl[i],
-            'longTermLiab': ltl[i],
-            'equity': eq[i],
-            'revenue': rev[i],
-            'grossProfit': gp[i],
-            'operatingProfit': op[i],
-            'netIncome': ni[i],
-            'currentRatio': round(ca[i] / stl[i], 2) if stl[i] > 0 else 0,
-            'debtToEquity': round((stl[i] + ltl[i]) / eq[i], 2) if eq[i] > 0 else 0,
-            'roe': round(ni[i] / eq[i] * 100, 1) if eq[i] > 0 else 0,
-            'netMargin': round(ni[i] / rev[i] * 100, 1) if rev[i] > 0 else 0
+        def get_row(keys):
+            for k in keys:
+                ck = clean_key(k)
+                for item_k, v in items.items():
+                    if ck in item_k:
+                        return [x * mult for x in v]
+            return [0.0] * len(periods)
+
+        ca = get_row(['donen varliklar'])
+        fa = get_row(['duran varliklar'])
+        ta = get_row(['toplam varliklar', 'varliklar'])
+        stl = get_row(['kisa vadeli yukumlulukler'])
+        ltl = get_row(['uzun vadeli yukumlulukler'])
+        eq = get_row(['toplam ozkaynaklar', 'ana ortakliga ait ozkaynaklar'])
+        rev = get_row(['hasilat', 'toplam hasilat'])
+        gp = get_row(['brut kar', 'ticari faaliyetlerden brut kar'])
+        op = get_row(['esas faaliyet kari'])
+        ni = get_row(['net donem kari', 'surdurulen faaliyetler donem kari'])
+
+        data = []
+        for i, p in enumerate(periods):
+            tot_act = ta[i] if ta[i] > 0 else (ca[i] + fa[i])
+            data.append({
+                'period': p,
+                'donen_varliklar': ca[i],
+                'duran_varliklar': fa[i],
+                'toplam_varliklar': tot_act,
+                'kisa_vadeli_yuk': stl[i],
+                'uzun_vadeli_yuk': ltl[i],
+                'ozkaynaklar': eq[i],
+                'net_satislar': rev[i],
+                'favok': op[i] * 1.25 if op[i] > 0 else (ni[i] * 1.25 if ni[i] > 0 else 0.0),
+                'net_kar': ni[i]
+            })
+
+        meta = COMPANY_META.get(ticker_clean, {})
+        normalized = normalize_company_data({
+            'ticker': ticker_clean,
+            'name': meta.get('name', f"{ticker_clean} A.Ş."),
+            'sector': meta.get('sector', 'BIST Genel'),
+            'bist': meta.get('bist', 'BIST 100'),
+            'price': meta.get('price', 100.0),
+            'shares': meta.get('shares', 1000000000),
+            'statements': data
         })
+        return normalized
 
-    meta = COMPANY_META.get(ticker, {})
-    return {
-        'ticker': ticker,
-        'name': meta.get('name', ticker),
-        'sector': meta.get('sector', ''),
-        'bist': meta.get('bist', ''),
-        'periods': periods,
-        'data': data
-    }
+    # Generic & file-independent universal fallback for any stock
+    return generate_generic_company_data(ticker_clean)
 
 class QuantRequestHandler(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):
@@ -130,6 +312,9 @@ class QuantRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+        self.send_header('Pragma', 'no-cache')
+        self.send_header('Expires', '0')
         super().end_headers()
 
     def do_OPTIONS(self):
@@ -140,12 +325,28 @@ class QuantRequestHandler(http.server.SimpleHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
 
+        if path in ['/', '/index.html']:
+            self.send_response(302)
+            self.send_header('Location', '/pulsedata-ops/index.html')
+            self.end_headers()
+            return
+
         if path == '/health':
             self.send_json({'status': 'online', 'version': '3.2', 'engine': 'QuantFlux Python Engine'})
             return
 
         if path == '/api/companies':
             res = [{'ticker': k, **v} for k, v in COMPANY_META.items()]
+            for dk, dv in DYNAMIC_COMPANIES.items():
+                if dk not in COMPANY_META and dk != 'CUSTOM':
+                    res.append({
+                        'ticker': dk,
+                        'name': dv.get('name', f"{dk} A.Ş."),
+                        'sector': dv.get('sector', 'Özel Analiz / BIST'),
+                        'bist': dv.get('bist', 'PORTFÖY'),
+                        'price': dv.get('price', 100.0),
+                        'shares': dv.get('shares', 1000000000)
+                    })
             self.send_json(res)
             return
 
@@ -169,39 +370,33 @@ class QuantRequestHandler(http.server.SimpleHTTPRequestHandler):
             ticker = path.split('/')[-1].upper()
             try:
                 from backend.ratios import FinancialRatiosEngine
-                meta = COMPANY_META.get(ticker, {
-                    'name': f"{ticker} A.Ş.",
-                    'sector': 'BIST Genel',
-                    'bist': 'BIST 100',
-                    'price': 100.0,
-                    'shares': 1000000000
-                })
-                # Fetch existing company data statements
+                from backend.scoring import BalanceSheetScoringEngine
+
                 comp_data = get_company_data(ticker)
-                stmts = comp_data['data'] if comp_data and 'data' in comp_data else []
+                stmts = comp_data.get('statements', comp_data.get('data', [])) if comp_data else []
                 if not stmts:
-                    stmts = [{
-                        'period': '2026/06', 'currentAssets': 512191000000.0, 'fixedAssets': 1847846000000.0,
-                        'totalAssets': 2360037000000.0, 'shortTermLiab': 566751000000.0, 'longTermLiab': 774833000000.0,
-                        'equity': 1018453000000.0, 'revenue': 585069000000.0, 'ebitda': 121400000000.0, 'netIncome': 18766000000.0
-                    }]
+                    comp_data = generate_generic_company_data(ticker)
+                    stmts = comp_data['statements']
+
+                price = comp_data.get('price', 100.0)
+                shares = comp_data.get('shares', 1000000000)
+
                 analysis = FinancialRatiosEngine.compute_valuation_multiples(
-                    price=meta['price'],
-                    shares=meta['shares'],
+                    price=price,
+                    shares=shares,
                     statements=stmts
                 )
-                from backend.scoring import BalanceSheetScoringEngine
                 f_score = BalanceSheetScoringEngine.calculate_piotroski_f_score(stmts)
                 z_score = BalanceSheetScoringEngine.calculate_altman_z_score(stmts)
-
                 annualized_table = FinancialRatiosEngine.derive_ttm_and_annualized_table(stmts)
+
                 self.send_json({
                     'ticker': ticker,
-                    'name': meta['name'],
-                    'sector': meta['sector'],
-                    'bist': meta['bist'],
-                    'price': meta['price'],
-                    'shares': meta['shares'],
+                    'name': comp_data.get('name', f"{ticker} A.Ş."),
+                    'sector': comp_data.get('sector', 'BIST Genel'),
+                    'bist': comp_data.get('bist', 'BIST 100'),
+                    'price': price,
+                    'shares': shares,
                     'market_cap': analysis.get('market_cap'),
                     'market_cap_formatted': analysis.get('market_cap_formatted'),
                     'enterprise_value': analysis.get('enterprise_value'),
@@ -222,15 +417,17 @@ class QuantRequestHandler(http.server.SimpleHTTPRequestHandler):
             ticker = path.split('/')[-1].upper()
             try:
                 from backend.scoring import BalanceSheetScoringEngine
-                meta = COMPANY_META.get(ticker, {'name': f"{ticker} A.Ş.", 'price': 100.0})
                 comp_data = get_company_data(ticker)
-                stmts = comp_data['data'] if comp_data and 'data' in comp_data else []
+                stmts = comp_data.get('statements', comp_data.get('data', [])) if comp_data else []
+                if not stmts:
+                    comp_data = generate_generic_company_data(ticker)
+                    stmts = comp_data['statements']
                 f_score = BalanceSheetScoringEngine.calculate_piotroski_f_score(stmts)
                 z_score = BalanceSheetScoringEngine.calculate_altman_z_score(stmts)
                 self.send_json({
                     'ticker': ticker,
-                    'name': meta['name'],
-                    'price': meta['price'],
+                    'name': comp_data.get('name', f"{ticker} A.Ş."),
+                    'price': comp_data.get('price', 100.0),
                     'piotroski_f': f_score,
                     'altman_z': z_score
                 })
@@ -370,15 +567,19 @@ class QuantRequestHandler(http.server.SimpleHTTPRequestHandler):
         if path == '/api/financials/upload-csv':
             content_length = int(self.headers.get('Content-Length', 0))
             raw_body = self.rfile.read(content_length).decode('utf-8', errors='replace')
-            # Extract CSV content if multipart
             csv_text = raw_body
+            filename = "uploaded.csv"
+            # Extract CSV content if multipart
             if 'boundary=' in self.headers.get('Content-Type', ''):
                 lines = raw_body.splitlines()
-                # Simple extraction of CSV body between boundaries
                 content_lines = []
                 inside_payload = False
                 for line in lines:
-                    if 'period' in line.lower() and ('disclosure_date' in line.lower() or 'donen_varliklar' in line.lower()):
+                    if 'filename=' in line:
+                        m_fn = re.search(r'filename="([^"]+)"', line)
+                        if m_fn:
+                            filename = m_fn.group(1)
+                    if 'period' in line.lower() and ('disclosure_date' in line.lower() or 'donen_varliklar' in line.lower() or 'current_assets' in line.lower()):
                         inside_payload = True
                     if inside_payload:
                         if line.startswith('------'):
@@ -390,15 +591,29 @@ class QuantRequestHandler(http.server.SimpleHTTPRequestHandler):
             # Try to parse using parser engine
             try:
                 from backend.parser import parse_financials_csv
-                records, errors, warnings = parse_financials_csv(csv_text, default_ticker="THYAO")
+                records, errors, warnings = parse_financials_csv(csv_text, default_ticker="CUSTOM", source_filename=filename)
+                ticker = records[0].get('ticker', 'CUSTOM') if records else 'CUSTOM'
+                norm_comp = normalize_company_data({
+                    'ticker': ticker,
+                    'name': f"{ticker} A.Ş. (Yüklenen Bilanço)",
+                    'sector': 'Özel Analiz / BIST',
+                    'bist': 'PORTFÖY',
+                    'price': 100.0,
+                    'shares': 1000000000,
+                    'statements': records
+                })
+                DYNAMIC_COMPANIES[ticker] = norm_comp
+                DYNAMIC_COMPANIES['CUSTOM'] = norm_comp
+
                 self.send_json({
                     'success': True if records else False,
-                    'ticker': 'THYAO',
+                    'ticker': ticker,
                     'rows_parsed': len(records),
                     'rows_inserted': len(records),
                     'warnings': warnings,
                     'errors': errors,
-                    'sample_records': records[:3]
+                    'sample_records': records[:3],
+                    'company': norm_comp
                 })
             except Exception as e:
                 self.send_json({'success': False, 'error': str(e)})
@@ -445,6 +660,7 @@ class QuantRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(body)
 
 def run():
+    socketserver.TCPServer.allow_reuse_address = True
     with socketserver.TCPServer(("", PORT), QuantRequestHandler) as httpd:
         print(f"QuantFlux Python API Server running at http://localhost:{PORT}")
         try:

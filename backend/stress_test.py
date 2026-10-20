@@ -151,7 +151,31 @@ class StressTestingEngine:
         ve kâr erime şelalesini (Waterfall) simüle eder.
         """
         ticker_clean = ticker.upper()
-        prof = cls.COMPANY_PROFILES.get(ticker_clean, cls.COMPANY_PROFILES["THYAO"])
+        prof = cls.COMPANY_PROFILES.get(ticker_clean)
+        if not prof:
+            try:
+                from backend.api_server import get_company_data
+                c_data = get_company_data(ticker_clean)
+                st = c_data['statements'][0] if c_data and 'statements' in c_data and c_data['statements'] else {}
+                rev = float(st.get('net_satislar', 250e9)) or 250e9
+                prof = {
+                    "name": c_data.get('name', f"{ticker_clean} A.Ş."),
+                    "sector": c_data.get('sector', "BIST Genel"),
+                    "base_revenue": rev,
+                    "base_cost_of_sales": abs(float(st.get('costOfSales', rev * 0.75))) or (rev * 0.75),
+                    "base_ebitda": float(st.get('favok', rev * 0.20)) or (rev * 0.20),
+                    "base_financial_exp": rev * 0.05,
+                    "base_net_income": float(st.get('net_kar', rev * 0.12)) or (rev * 0.12),
+                    "current_assets": float(st.get('donen_varliklar', rev * 0.5)) or (rev * 0.5),
+                    "short_term_liab": float(st.get('kisa_vadeli_yuk', rev * 0.45)) or (rev * 0.45),
+                    "base_current_ratio": float(st.get('currentRatio', 1.1)) or 1.1,
+                    "fx_import_share": 0.35,
+                    "net_fx_exposure": 5000000000.0,
+                    "floating_debt_share": 0.35,
+                    "demand_elasticity": 0.85
+                }
+            except Exception:
+                prof = cls.COMPANY_PROFILES["THYAO"]
 
         base_rev = prof["base_revenue"]
         base_cogs = prof["base_cost_of_sales"]
